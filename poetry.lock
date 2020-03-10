@@ -70,8 +70,8 @@ category = "dev"
 description = "Composable command line interface toolkit"
 name = "click"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "7.0"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+version = "7.1.1"
 
 [[package]]
 category = "dev"
@@ -97,17 +97,17 @@ description = "FastAPI framework, high performance, easy to learn, fast to code,
 name = "fastapi"
 optional = false
 python-versions = ">=3.6"
-version = "0.49.0"
+version = "0.52.0"
 
 [package.dependencies]
 pydantic = ">=0.32.2,<2.0.0"
-starlette = "0.12.9"
+starlette = "0.13.2"
 
 [package.extras]
 all = ["requests", "aiofiles", "jinja2", "python-multipart", "itsdangerous", "pyyaml", "graphene", "ujson", "email-validator", "uvicorn", "async-exit-stack", "async-generator"]
 dev = ["pyjwt", "passlib", "autoflake", "flake8", "uvicorn", "graphene"]
 doc = ["mkdocs", "mkdocs-material", "markdown-include"]
-test = ["pytest (>=4.0.0)", "pytest-cov", "mypy", "black", "isort", "requests", "email-validator", "sqlalchemy", "peewee", "databases", "orjson", "async-exit-stack", "async-generator"]
+test = ["pytest (>=4.0.0)", "pytest-cov", "mypy", "black", "isort", "requests", "email-validator", "sqlalchemy", "peewee", "databases", "orjson", "async-exit-stack", "async-generator", "python-multipart", "aiofiles", "ujson", "flask"]
 
 [[package]]
 category = "dev"
@@ -165,7 +165,7 @@ description = "Rate limiting utilities"
 name = "limits"
 optional = false
 python-versions = "*"
-version = "1.5"
+version = "1.5.1"
 
 [package.dependencies]
 six = ">=1.4.1"
@@ -235,7 +235,7 @@ description = "Core utilities for Python packages"
 name = "packaging"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "20.1"
+version = "20.3"
 
 [package.dependencies]
 pyparsing = ">=2.0.2"
@@ -376,7 +376,7 @@ description = "The little ASGI library that shines."
 name = "starlette"
 optional = false
 python-versions = ">=3.6"
-version = "0.12.9"
+version = "0.13.2"
 
 [package.extras]
 full = ["aiofiles", "graphene", "itsdangerous", "jinja2", "python-multipart", "pyyaml", "requests", "ujson"]
@@ -433,14 +433,14 @@ marker = "python_version < \"3.8\""
 name = "zipp"
 optional = false
 python-versions = ">=3.6"
-version = "3.0.0"
+version = "3.1.0"
 
 [package.extras]
 docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "cc0599a8890bd327b78c53f145ff1e0c9ff29cd945a4d2c21423b7e0d09054fd"
+content-hash = "57fa9a759bdb34147c28650537ce8bed5101af485843e3367e5366ce26629ad3"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -469,8 +469,8 @@ chardet = [
     {file = "chardet-3.0.4.tar.gz", hash = "sha256:84ab92ed1c4d4f16916e05906b6b75a6c0fb5db821cc65e70cbd64a3e2a5eaae"},
 ]
 click = [
-    {file = "Click-7.0-py2.py3-none-any.whl", hash = "sha256:2335065e6395b9e67ca716de5f7526736bfa6ceead690adf616d925bdc622b13"},
-    {file = "Click-7.0.tar.gz", hash = "sha256:5b94b49521f6456670fdb30cd82a4eca9412788a93fa6dd6df72c94d5a8ff2d7"},
+    {file = "click-7.1.1-py2.py3-none-any.whl", hash = "sha256:e345d143d80bf5ee7534056164e5e112ea5e22716bbb1ce727941f4c8b471b9a"},
+    {file = "click-7.1.1.tar.gz", hash = "sha256:8a18b4ea89d8820c5d0c7da8a64b2c324b4dabb695804dbfea19b9be9d88c0cc"},
 ]
 colorama = [
     {file = "colorama-0.4.3-py2.py3-none-any.whl", hash = "sha256:7d73d2a99753107a36ac6b455ee49046802e59d9d076ef8e47b61499fa29afff"},
@@ -481,8 +481,8 @@ dataclasses = [
     {file = "dataclasses-0.6.tar.gz", hash = "sha256:6988bd2b895eef432d562370bb707d540f32f7360ab13da45340101bc2307d84"},
 ]
 fastapi = [
-    {file = "fastapi-0.49.0-py3-none-any.whl", hash = "sha256:717dbd2871c270970c70406ef4e550c3504525a7941df817f3a1318de0857c13"},
-    {file = "fastapi-0.49.0.tar.gz", hash = "sha256:c9296e05a011a53c5b4f0a12f06c261b95b7199685b3af986486e41a27545081"},
+    {file = "fastapi-0.52.0-py3-none-any.whl", hash = "sha256:532648b4e16dd33673d71dc0b35dff1b4d20c709d04078010e258b9f3a79771a"},
+    {file = "fastapi-0.52.0.tar.gz", hash = "sha256:721b11d8ffde52c669f52741b6d9d761fe2e98778586f4cfd6f5e47254ba5016"},
 ]
 hiro = [
     {file = "hiro-0.5.1-py3.7.egg", hash = "sha256:8fb52fac61a360a4bd955a2e0c975483da28aba99196febb99d5dda38b5f48e0"},
@@ -501,8 +501,8 @@ isort = [
     {file = "isort-4.3.21.tar.gz", hash = "sha256:54da7e92468955c4fceacd0c86bd0ec997b0e1ee80d97f67c35a78b719dccab1"},
 ]
 limits = [
-    {file = "limits-1.5-py2-none-any.whl", hash = "sha256:d05ba12c94ea8ab7a54cfa9c55ec46882790fae7e389743c0abea8e58fa1f886"},
-    {file = "limits-1.5.tar.gz", hash = "sha256:19bc9e6f6c64e8edfc7d18734a89486cdadbad816a81673c35669a1d1cac6d5d"},
+    {file = "limits-1.5.1-py2-none-any.whl", hash = "sha256:0e5f8b10f18dd809eb2342f5046eb9aa5e4e69a0258567b5f4aa270647d438b3"},
+    {file = "limits-1.5.1.tar.gz", hash = "sha256:f0c3319f032c4bfad68438ed1325c0fac86dac64582c7c25cddc87a0b658fa20"},
 ]
 lxml = [
     {file = "lxml-4.5.0-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:0701f7965903a1c3f6f09328c1278ac0eee8f56f244e66af79cb224b7ef3801c"},
@@ -562,8 +562,8 @@ mypy-extensions = [
     {file = "mypy_extensions-0.4.3.tar.gz", hash = "sha256:2d82818f5bb3e369420cb3c4060a7970edba416647068eb4c5343488a6c604a8"},
 ]
 packaging = [
-    {file = "packaging-20.1-py2.py3-none-any.whl", hash = "sha256:170748228214b70b672c581a3dd610ee51f733018650740e98c7df862a583f73"},
-    {file = "packaging-20.1.tar.gz", hash = "sha256:e665345f9eef0c621aa0bf2f8d78cf6d21904eef16a93f020240b704a57f1334"},
+    {file = "packaging-20.3-py2.py3-none-any.whl", hash = "sha256:82f77b9bee21c1bafbf35a84905d604d5d1223801d639cf3ed140bd651c08752"},
+    {file = "packaging-20.3.tar.gz", hash = "sha256:3c292b474fda1671ec57d46d739d072bfd495a4f51ad01a055121d81e952b7a3"},
 ]
 pathspec = [
     {file = "pathspec-0.7.0-py2.py3-none-any.whl", hash = "sha256:163b0632d4e31cef212976cf57b43d9fd6b0bac6e67c26015d611a647d5e7424"},
@@ -637,7 +637,8 @@ six = [
     {file = "six-1.14.0.tar.gz", hash = "sha256:236bdbdce46e6e6a3d61a337c0f8b763ca1e8717c03b369e87a7ec7ce1319c0a"},
 ]
 starlette = [
-    {file = "starlette-0.12.9.tar.gz", hash = "sha256:c2ac9a42e0e0328ad20fe444115ac5e3760c1ee2ac1ff8cdb5ec915c4a453411"},
+    {file = "starlette-0.13.2-py3-none-any.whl", hash = "sha256:6169ee78ded501095d1dda7b141a1dc9f9934d37ad23196e180150ace2c6449b"},
+    {file = "starlette-0.13.2.tar.gz", hash = "sha256:a9bb130fa7aa736eda8a814b6ceb85ccf7a209ed53843d0d61e246b380afa10f"},
 ]
 toml = [
     {file = "toml-0.10.0-py2.7.egg", hash = "sha256:f1db651f9657708513243e61e6cc67d101a39bad662eaa9b5546f789338e07a3"},
@@ -681,6 +682,6 @@ wcwidth = [
     {file = "wcwidth-0.1.8.tar.gz", hash = "sha256:f28b3e8a6483e5d49e7f8949ac1a78314e740333ae305b4ba5defd3e74fb37a8"},
 ]
 zipp = [
-    {file = "zipp-3.0.0-py3-none-any.whl", hash = "sha256:12248a63bbdf7548f89cb4c7cda4681e537031eda29c02ea29674bc6854460c2"},
-    {file = "zipp-3.0.0.tar.gz", hash = "sha256:7c0f8e91abc0dc07a5068f315c52cb30c66bfbc581e5b50704c8a2f6ebae794a"},
+    {file = "zipp-3.1.0-py3-none-any.whl", hash = "sha256:aa36550ff0c0b7ef7fa639055d797116ee891440eac1a56f378e2d3179e0320b"},
+    {file = "zipp-3.1.0.tar.gz", hash = "sha256:c599e4d75c98f6798c509911d08a22e6c021d074469042177c8c86fb92eefd96"},
 ]
