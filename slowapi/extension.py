@@ -34,6 +34,8 @@ from .wrappers import Limit, LimitGroup
 
 # used to annotate get_app_config method
 T = TypeVar("T")
+# Define an alias for the most commonly used type
+StrOrCallableStr = Union[str, Callable[..., str]]
 
 
 class C:
@@ -111,8 +113,8 @@ class Limiter:
         self,
         # app: Starlette = None,
         key_func=Callable[..., str],
-        default_limits: List[Union[str, Callable[..., str]]] = [],
-        application_limits: List[Union[str, Callable[..., str]]] = [],
+        default_limits: List[StrOrCallableStr] = [],
+        application_limits: List[StrOrCallableStr] = [],
         headers_enabled: bool = False,
         strategy: Optional[str] = None,
         storage_uri: Optional[str] = None,
@@ -227,7 +229,7 @@ class Limiter:
             C.HEADER_RETRY_AFTER_VALUE
         )
         self._key_prefix = self._key_prefix or self.get_app_config(C.KEY_PREFIX)
-        app_limits = self.get_app_config(C.APPLICATION_LIMITS, None)
+        app_limits: StrOrCallableStr = self.get_app_config(C.APPLICATION_LIMITS, None)
         if not self._application_limits and app_limits:
             self._application_limits = [
                 LimitGroup(
@@ -235,13 +237,15 @@ class Limiter:
                 )
             ]
 
-        conf_limits = self.get_app_config(C.DEFAULT_LIMITS, None)
+        conf_limits: StrOrCallableStr = self.get_app_config(C.DEFAULT_LIMITS, None)
         if not self._default_limits and conf_limits:
             self._default_limits = [
                 LimitGroup(conf_limits, self._key_func, None, False, None, None, None)
             ]
         fallback_enabled = self.get_app_config(C.IN_MEMORY_FALLBACK_ENABLED, False)
-        fallback_limits = self.get_app_config(C.IN_MEMORY_FALLBACK, None)
+        fallback_limits: StrOrCallableStr = self.get_app_config(
+            C.IN_MEMORY_FALLBACK, None
+        )
         if not self._in_memory_fallback and fallback_limits:
             self._in_memory_fallback = [
                 LimitGroup(
@@ -485,10 +489,10 @@ class Limiter:
 
     def __limit_decorator(
         self,
-        limit_value: Union[str, Callable[..., str]],
+        limit_value: StrOrCallableStr,
         key_func: Optional[Callable[..., str]] = None,
         shared: bool = False,
-        scope: Optional[Union[str, Callable[..., str]]] = None,
+        scope: Optional[StrOrCallableStr] = None,
         per_method: bool = False,
         methods: Optional[List] = None,
         error_message: Optional[str] = None,
@@ -622,7 +626,7 @@ class Limiter:
     def shared_limit(
         self,
         limit_value: Union[str, Callable[[str], str]],
-        scope: Union[str, Callable[..., str]],
+        scope: StrOrCallableStr,
         key_func: Optional[Callable[..., str]] = None,
         error_message: Optional[str] = None,
         exempt_when=None,
