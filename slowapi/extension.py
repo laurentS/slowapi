@@ -72,7 +72,7 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Re
     that was hit. If no limit is hit, the countdown is added to headers.
     """
     response = JSONResponse(
-        {"error": f"Rate limit exceeded: {exc.limit}"}, status_code=429
+        {"error": f"Rate limit exceeded: {exc.detail}"}, status_code=429
     )
     response = request.app.state.limiter._inject_headers(
         response, request.state.view_rate_limit
