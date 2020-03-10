@@ -13,8 +13,8 @@ import time
 import warnings
 from email.utils import formatdate, parsedate_to_datetime
 from functools import wraps
-from typing import (Any, Callable, Dict, List, Optional, Set, Tuple, Type,
-                    TypeVar, Union)
+from typing import (Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple,
+                    Type, TypeVar, Union)
 
 from limits import RateLimitItem  # type: ignore
 from limits.errors import ConfigurationError  # type: ignore
@@ -112,22 +112,22 @@ class Limiter:
     def __init__(
         self,
         # app: Starlette = None,
-        key_func=Callable[..., str],
+        key_func: Callable[..., str],
         default_limits: List[StrOrCallableStr] = [],
         application_limits: List[StrOrCallableStr] = [],
         headers_enabled: bool = False,
         strategy: Optional[str] = None,
         storage_uri: Optional[str] = None,
-        storage_options: Dict = {},
+        storage_options: Dict[str, str] = {},
         auto_check: bool = True,
         swallow_errors: bool = False,
-        in_memory_fallback: List = [],
+        in_memory_fallback: List[StrOrCallableStr] = [],
         in_memory_fallback_enabled: bool = False,
-        retry_after=None,
+        retry_after: Optional[str] = None,
         key_prefix: str = "",
         enabled: bool = True,
         config_filename: Optional[str] = None,
-    ):
+    ) -> None:
         """
         Configure the rate limiter at app level
         """
@@ -144,15 +144,15 @@ class Limiter:
         self.enabled = enabled
         self._default_limits = []
         self._application_limits = []
-        self._in_memory_fallback = []
+        self._in_memory_fallback: List[LimitGroup] = []
         self._in_memory_fallback_enabled = (
             in_memory_fallback_enabled or len(in_memory_fallback) > 0
         )
-        self._exempt_routes: Set = set()
-        self._request_filters: List = []
+        self._exempt_routes: Set[str] = set()
+        self._request_filters: List[Callable[..., bool]] = []
         self._headers_enabled = headers_enabled
         self._header_mapping: Dict[int, str] = {}
-        self._retry_after = retry_after
+        self._retry_after: Optional[str] = retry_after
         self._strategy = strategy
         self._storage_uri = storage_uri
         self._storage_options = storage_options
@@ -174,14 +174,14 @@ class Limiter:
             self._in_memory_fallback.extend(
                 [LimitGroup(limit, self._key_func, None, False, None, None, None)]
             )
-        self._route_limits: Dict = {}
-        self._dynamic_route_limits: Dict = {}
+        self._route_limits: Dict[str, List[Limit]] = {}
+        self._dynamic_route_limits: Dict[str, List[LimitGroup]] = {}
         # a flag to note if the storage backend is dead (not available)
         self._storage_dead: bool = False
         self._fallback_limiter = None
         self.__check_backend_count = 0
         self.__last_check_backend = time.time()
-        self.__marked_for_limiting: Dict = {}
+        self.__marked_for_limiting: Dict[str, List[Callable]] = {}
 
         class BlackHoleHandler(logging.StreamHandler):
             def emit(*_):
@@ -229,7 +229,9 @@ class Limiter:
             C.HEADER_RETRY_AFTER_VALUE
         )
         self._key_prefix = self._key_prefix or self.get_app_config(C.KEY_PREFIX)
-        app_limits: StrOrCallableStr = self.get_app_config(C.APPLICATION_LIMITS, None)
+        app_limits: Optional[StrOrCallableStr] = self.get_app_config(
+            C.APPLICATION_LIMITS, None
+        )
         if not self._application_limits and app_limits:
             self._application_limits = [
                 LimitGroup(
@@ -237,13 +239,15 @@ class Limiter:
                 )
             ]
 
-        conf_limits: StrOrCallableStr = self.get_app_config(C.DEFAULT_LIMITS, None)
+        conf_limits: Optional[StrOrCallableStr] = self.get_app_config(
+            C.DEFAULT_LIMITS, None
+        )
         if not self._default_limits and conf_limits:
             self._default_limits = [
                 LimitGroup(conf_limits, self._key_func, None, False, None, None, None)
             ]
         fallback_enabled = self.get_app_config(C.IN_MEMORY_FALLBACK_ENABLED, False)
-        fallback_limits: StrOrCallableStr = self.get_app_config(
+        fallback_limits: Optional[StrOrCallableStr] = self.get_app_config(
             C.IN_MEMORY_FALLBACK, None
         )
         if not self._in_memory_fallback and fallback_limits:
@@ -261,11 +265,10 @@ class Limiter:
             self._fallback_storage = MemoryStorage()
             self._fallback_limiter = STRATEGIES[strategy](self._fallback_storage)
 
-    def slowapi_startup(self):
+    def slowapi_startup(self) -> None:
         """
         Starlette startup event handler that links the app with the Limiter instance.
         """
-        print("STARTUP")
         app.state.limiter = self
         app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -408,7 +411,10 @@ class Limiter:
             raise RateLimitExceeded(failed_limit)
 
     def __check_request_limit(
-        self, request: Request, endpoint_func: Callable, in_middleware: bool = True
+        self,
+        request: Request,
+        endpoint_func: Callable[..., Any],
+        in_middleware: bool = True,
     ) -> None:
         """
         Determine if the request is within limits
@@ -428,11 +434,11 @@ class Limiter:
             or any(fn() for fn in self._request_filters)
         ):
             return
-        limits: List = []
-        dynamic_limits: List = []
+        limits: List[Limit] = []
+        dynamic_limits: List[Limit] = []
 
         if not in_middleware:
-            limits = name in self._route_limits and self._route_limits[name] or []
+            limits = self._route_limits[name] if name in self._route_limits else []
             dynamic_limits = []
             if name in self._dynamic_route_limits:
                 for lim in self._dynamic_route_limits[name]:
@@ -446,7 +452,7 @@ class Limiter:
                         )
 
         try:
-            all_limits: List = []
+            all_limits: List[Limit] = []
             if self._storage_dead and self._fallback_limiter:
                 if in_middleware and name in self.__marked_for_limiting:
                     pass
@@ -458,7 +464,7 @@ class Limiter:
                     else:
                         all_limits = list(itertools.chain(*self._in_memory_fallback))
             if not all_limits:
-                route_limits = limits + dynamic_limits
+                route_limits: List[Limit] = limits + dynamic_limits
                 all_limits = (
                     list(itertools.chain(*self._application_limits))
                     if in_middleware
@@ -494,17 +500,18 @@ class Limiter:
         shared: bool = False,
         scope: Optional[StrOrCallableStr] = None,
         per_method: bool = False,
-        methods: Optional[List] = None,
+        methods: Optional[List[str]] = None,
         error_message: Optional[str] = None,
         exempt_when: Optional[Callable[..., bool]] = None,
-    ) -> Callable:
+    ) -> Callable[..., Any]:
 
         _scope = scope if shared else None
 
-        def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable[..., Response]) -> Callable[..., Response]:
             keyfunc = key_func or self._key_func
             name = f"{func.__module__}.{func.__name__}"
-            dynamic_limit, static_limits = None, []
+            dynamic_limit = None
+            static_limits: List[Limit] = []
             if callable(limit_value):
                 dynamic_limit = LimitGroup(
                     limit_value,
@@ -594,10 +601,10 @@ class Limiter:
         limit_value: Union[str, Callable[[str], str]],
         key_func: Optional[Callable[..., str]] = None,
         per_method: bool = False,
-        methods: Optional[List] = None,
+        methods: Optional[List[str]] = None,
         error_message: Optional[str] = None,
-        exempt_when=None,
-    ):
+        exempt_when: Optional[Callable[..., bool]] = None,
+    ) -> Callable:
         """
         decorator to be used for rate limiting individual routes.
 
@@ -629,8 +636,8 @@ class Limiter:
         scope: StrOrCallableStr,
         key_func: Optional[Callable[..., str]] = None,
         error_message: Optional[str] = None,
-        exempt_when=None,
-    ):
+        exempt_when: Optional[Callable[..., bool]] = None,
+    ) -> Callable:
         """
         decorator to be applied to multiple routes sharing the same rate limit.
 
