@@ -6,6 +6,14 @@ Note: this is alpha quality code still, the API may change, and things may fall 
 
 # Quick start
 
+## Installation
+
+`slowapi` is available from [pypi](https://pypi.org/project/slowapi/) so you can install it as usual:
+
+```
+$ pip install slowapi
+```
+
 ## Starlette
 
 ```python
@@ -96,4 +104,4 @@ $ pytest
 # Credits
 
 Credits go to [flask-limiter](https://github.com/alisaifee/flask-limiter) of which SlowApi is a (still partial) adaptation to Starlette and FastAPI.
-It's also important to mention that the actual rate limiting work is done be [limits](https://github.com/alisaifee/limits/), `slowapi` is just a wrapper around it.
+It's also important to mention that the actual rate limiting work is done by [limits](https://github.com/alisaifee/limits/), `slowapi` is just a wrapper around it.
