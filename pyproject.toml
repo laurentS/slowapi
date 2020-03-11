@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "slowapi"
-version = "0.1.0"
+version = "0.1.1"
 description = "A rate limiting extension for Starlette and Fastapi"
 authors = ["Laurent Savaete <laurent@where.tf>"]
 license = "MIT"
