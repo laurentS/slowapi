@@ -410,7 +410,7 @@ class Limiter:
         if failed_limit:
             raise RateLimitExceeded(failed_limit)
 
-    def __check_request_limit(
+    def _check_request_limit(
         self,
         request: Request,
         endpoint_func: Callable[..., Any],
@@ -486,7 +486,7 @@ class Limiter:
                     " in-memory storage"
                 )
                 self._storage_dead = True
-                self.__check_request_limit(request, endpoint_func, in_middleware)
+                self._check_request_limit(request, endpoint_func, in_middleware)
             else:
                 if self._swallow_errors:
                     self.logger.exception("Failed to rate limit. Swallowing error")
@@ -567,7 +567,7 @@ class Limiter:
                     if self._auto_check and not getattr(
                         request.state, "_rate_limiting_complete", False
                     ):
-                        self.__check_request_limit(request, func, False)
+                        self._check_request_limit(request, func, False)
                         request.state._rate_limiting_complete = True
                     response = await func(*args, **kwargs)
                     self._inject_headers(response, request.state.view_rate_limit)
@@ -586,7 +586,7 @@ class Limiter:
                     if self._auto_check and not getattr(
                         request.state, "_rate_limiting_complete", False
                     ):
-                        self.__check_request_limit(request, func, False)
+                        self._check_request_limit(request, func, False)
                         request.state._rate_limiting_complete = True
                     response = func(*args, **kwargs)
                     self._inject_headers(response, request.state.view_rate_limit)
@@ -659,3 +659,17 @@ class Limiter:
             error_message=error_message,
             exempt_when=exempt_when,
         )
+
+    def exempt(self, obj):
+        """
+        decorator to mark a view as exempt from
+        rate limits.
+        """
+        name = "%s.%s" % (obj.__module__, obj.__name__)
+
+        @wraps(obj)
+        def __inner(*a, **k):
+            return obj(*a, **k)
+
+        self._exempt_routes.add(name)
+        return __inner

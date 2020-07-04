@@ -168,3 +168,29 @@ class TestDecorators(TestSlowapi):
                 timeline.forward(retry_after)
                 resp = cli.get("/t1")
                 assert resp.status_code == 200
+
+    def test_exempt_decorator(self):
+        app, limiter = self.build_starlette_app(
+            headers_enabled=True, key_func=get_remote_address, default_limits=["1/minute"]
+
+        )
+        @app.route("/t1")
+        def t(request: Request):
+            return PlainTextResponse("test")
+
+        with TestClient(app) as cli:
+            resp = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.10"})
+            assert resp.status_code == 200
+            resp2 = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.10"})
+            assert resp2.status_code == 429
+
+        @app.route("/t2")
+        @limiter.exempt
+        def t(request: Request):
+            return PlainTextResponse("test")
+
+        with TestClient(app) as cli:
+            resp = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.11"})
+            assert resp.status_code == 200
+            resp2 = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.11"})
+            assert resp2.status_code == 200
