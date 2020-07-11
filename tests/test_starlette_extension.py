@@ -190,7 +190,7 @@ class TestDecorators(TestSlowapi):
             return PlainTextResponse("test")
 
         with TestClient(app) as cli:
-            resp = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.11"})
+            resp = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.10"})
             assert resp.status_code == 200
-            resp2 = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.11"})
+            resp2 = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.10"})
             assert resp2.status_code == 200
