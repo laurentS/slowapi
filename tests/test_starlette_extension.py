@@ -174,6 +174,7 @@ class TestDecorators(TestSlowapi):
             headers_enabled=True, key_func=get_remote_address, default_limits=["1/minute"]
 
         )
+
         @app.route("/t1")
         def t(request: Request):
             return PlainTextResponse("test")
@@ -194,3 +195,25 @@ class TestDecorators(TestSlowapi):
             assert resp.status_code == 200
             resp2 = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.10"})
             assert resp2.status_code == 200
+
+    def test_default_and_decorator_limit_merging(self):
+        app, limiter = self.build_starlette_app(key_func=get_ipaddr, default_limits=["50/minute"])
+
+        @limiter.limit("100 per minute", key_func=lambda: "lest")
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+
+        with hiro.Timeline().freeze() as timeline:
+            cli = TestClient(app)
+            for i in range(0, 100):
+                response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.14"})
+                assert response.status_code == 200 if i < 50 else 429
+            for i in range(50):
+                assert cli.get("/t1").status_code == 200
+
+            assert cli.get("/t1").status_code == 429
+            assert (
+                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.15"}).status_code
+                    == 429)
