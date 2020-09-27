@@ -562,7 +562,8 @@ class Limiter:
                 async def async_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
                     request = kwargs.get("request", args[idx] if args else None)
-                    assert isinstance(request, Request)
+                    if not isinstance(request, Request):
+                        raise Exception("parameter `request` must be an instance of starlette.requests.Request")
 
                     if self._auto_check and not getattr(
                         request.state, "_rate_limiting_complete", False
@@ -581,7 +582,8 @@ class Limiter:
                 def sync_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
                     request = kwargs.get("request", args[idx] if args else None)
-                    assert isinstance(request, Request)
+                    if not isinstance(request, Request):
+                        raise Exception("parameter `request` must be an instance of starlette.requests.Request")
 
                     if self._auto_check and not getattr(
                         request.state, "_rate_limiting_complete", False
