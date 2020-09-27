@@ -35,6 +35,7 @@ jobs:
       run: |
         black --check .
     - name: Check typing annotations with mypy
+      run: |
         mypy .
     - name: Test with pytest
       run: |
