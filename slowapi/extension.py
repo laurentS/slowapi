@@ -13,8 +13,19 @@ import time
 import warnings
 from email.utils import formatdate, parsedate_to_datetime
 from functools import wraps
-from typing import (Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple,
-                    Type, TypeVar, Union)
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from limits import RateLimitItem  # type: ignore
 from limits.errors import ConfigurationError  # type: ignore
@@ -269,8 +280,8 @@ class Limiter:
         """
         Starlette startup event handler that links the app with the Limiter instance.
         """
-        app.state.limiter = self
-        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+        app.state.limiter = self  # type: ignore
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
 
     def get_app_config(self, key: str, default_value: T = None) -> T:
         """
@@ -563,14 +574,16 @@ class Limiter:
                     # get the request object from the decorated endpoint function
                     request = kwargs.get("request", args[idx] if args else None)
                     if not isinstance(request, Request):
-                        raise Exception("parameter `request` must be an instance of starlette.requests.Request")
+                        raise Exception(
+                            "parameter `request` must be an instance of starlette.requests.Request"
+                        )
 
                     if self._auto_check and not getattr(
                         request.state, "_rate_limiting_complete", False
                     ):
                         self.__check_request_limit(request, func, False)
                         request.state._rate_limiting_complete = True
-                    response = await func(*args, **kwargs)
+                    response = await func(*args, **kwargs)  # type: ignore
                     self._inject_headers(response, request.state.view_rate_limit)
                     return response
 
@@ -583,7 +596,9 @@ class Limiter:
                     # get the request object from the decorated endpoint function
                     request = kwargs.get("request", args[idx] if args else None)
                     if not isinstance(request, Request):
-                        raise Exception("parameter `request` must be an instance of starlette.requests.Request")
+                        raise Exception(
+                            "parameter `request` must be an instance of starlette.requests.Request"
+                        )
 
                     if self._auto_check and not getattr(
                         request.state, "_rate_limiting_complete", False
