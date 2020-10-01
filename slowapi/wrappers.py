@@ -17,6 +17,7 @@ class Limit(object):
         methods: Optional[List[str]],
         error_message: Optional[Union[str, Callable[..., str]]],
         exempt_when: Optional[Callable[..., bool]],
+        override_defaults: bool,
     ) -> None:
         self.limit = limit
         self.key_func = key_func
@@ -25,6 +26,7 @@ class Limit(object):
         self.methods = methods
         self.error_message = error_message
         self.exempt_when = exempt_when
+        self.override_defaults = override_defaults
 
     @property
     def is_exempt(self) -> bool:
@@ -62,6 +64,7 @@ class LimitGroup(object):
         methods: Optional[List[str]],
         error_message: Optional[Union[str, Callable[..., str]]],
         exempt_when: Optional[Callable[..., bool]],
+        override_defaults: bool,
     ):
         self.__limit_provider = limit_provider
         self.__scope = scope
@@ -70,6 +73,7 @@ class LimitGroup(object):
         self.methods = methods and [m.lower() for m in methods] or methods
         self.error_message = error_message
         self.exempt_when = exempt_when
+        self.override_defaults = override_defaults
 
     def __iter__(self) -> Iterator[Limit]:
         limit_items: List[RateLimitItem] = parse_many(
@@ -86,4 +90,5 @@ class LimitGroup(object):
                 self.methods,
                 self.error_message,
                 self.exempt_when,
+                self.override_defaults,
             )
