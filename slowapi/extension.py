@@ -13,8 +13,19 @@ import time
 import warnings
 from email.utils import formatdate, parsedate_to_datetime
 from functools import wraps
-from typing import (Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple,
-                    Type, TypeVar, Union)
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from limits import RateLimitItem  # type: ignore
 from limits.errors import ConfigurationError  # type: ignore
