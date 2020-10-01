@@ -1,0 +1,2 @@
+mkautodoc==0.1.0 \
+    --hash=sha256:7c2595f40276b356e576ce7e343338f8b4fa1e02ea904edf33fadf82b68ca67c
