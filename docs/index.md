@@ -4,8 +4,6 @@ A rate limiting library for Starlette and FastAPI adapted from [flask-limiter](h
 
 Note: this is alpha quality code still, the API may change, and things may fall apart while you try it.
 
-The documentation is on [read the docs](https://slowapi.readthedocs.io/en/latest/).
-
 # Quick start
 
 ## Installation
@@ -16,6 +14,47 @@ The documentation is on [read the docs](https://slowapi.readthedocs.io/en/latest
 $ pip install slowapi
 ```
 
+## Starlette
+
+```python
+    from starlette.applications import Starlette
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+
+    limiter = Limiter(key_func=get_remote_address)
+    app = Starlette()
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    @limiter.limit("5/minute")
+    async def homepage(request: Request):
+        return PlainTextResponse("test")
+
+    app.add_route("/home", homepage)
+```
+
+The above app will have a route `t1` that will accept up to 5 requests per minute. Requests beyond this limit will be answered with an HTTP 429 error, and the body of the view will not run.
+
+## FastAPI
+
+```python
+    from fastapi import FastAPI
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+
+    limiter = Limiter(key_func=get_remote_address)
+    app = FastAPI()
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    @app.get("/home")
+    @limiter.limit("5/minute")
+    async def homepage(request: Request):
+        return PlainTextResponse("test")
+```
+
+This will provide the same result, but with a FastAPI app.
+
 # Features
 
 Most feature are coming from (will come from) FlaskLimiter and the underlying [limits](https://limits.readthedocs.io/).
@@ -25,7 +64,6 @@ Supported now:
 - redis, memcached and memory backends to track your limits (memory as a fallback)
 - support for sync and async HTTP endpoints
 - Support for shared limits across a set of routes
-
 
 # Limitations and known issues
 
@@ -53,6 +91,8 @@ and not:
 
 PRs are more than welcome! Please include tests for your changes :)
 
+Please run [black](black.readthedocs.io/) on your code before committing, or your PR will not pass the tests.
+
 The package uses [poetry](https://python-poetry.org) to manage dependencies. To setup your dev env:
 
 ```bash
@@ -68,3 +108,5 @@ $ pytest
 
 Credits go to [flask-limiter](https://github.com/alisaifee/flask-limiter) of which SlowApi is a (still partial) adaptation to Starlette and FastAPI.
 It's also important to mention that the actual rate limiting work is done by [limits](https://github.com/alisaifee/limits/), `slowapi` is just a wrapper around it.
+
+The documentation is built using [mkDocs](https://www.mkdocs.org/) and the API documentation is generated using [mkautodoc](https://github.com/tomchristie/mkautodoc).

@@ -13,8 +13,19 @@ import time
 import warnings
 from email.utils import formatdate, parsedate_to_datetime
 from functools import wraps
-from typing import (Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple,
-                    Type, TypeVar, Union)
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from limits import RateLimitItem  # type: ignore
 from limits.errors import ConfigurationError  # type: ignore
@@ -84,28 +95,39 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Re
 
 class Limiter:
     """
-    :param app: :class:`Starlette/FastAPI` instance to initialize the extension
+    Initializes the slowapi rate limiter.
+
+    ** parameter **
+
+    * **app**: `Starlette/FastAPI` instance to initialize the extension
      with.
-    :param list default_limits: a variable list of strings or callables returning strings denoting global
-     limits to apply to all routes. :ref:`ratelimit-string` for  more details.
-    :param list application_limits: a variable list of strings or callables returning strings for limits that
+
+    * **default_limits**: a variable list of strings or callables returning strings denoting global
+     limits to apply to all routes. `ratelimit-string` for  more details.
+
+    * **application_limits**: a variable list of strings or callables returning strings for limits that
      are applied to the entire application (i.e a shared limit for all routes)
-    :param function key_func: a callable that returns the domain to rate limit by.
-    :param bool headers_enabled: whether ``X-RateLimit`` response headers are written.
-    :param str strategy: the strategy to use. refer to :ref:`ratelimit-strategy`
-    :param str storage_uri: the storage location. refer to :ref:`ratelimit-conf`
-    :param dict storage_options: kwargs to pass to the storage implementation upon
+
+    * **key_func**: a callable that returns the domain to rate limit by.
+
+    * **headers_enabled**: whether ``X-RateLimit`` response headers are written.
+
+    * **strategy:** the strategy to use. refer to `ratelimit-strategy`
+
+    * **storage_uri**: the storage location. refer to `ratelimit-conf`
+
+    * **storage_options**: kwargs to pass to the storage implementation upon
       instantiation.
-    :param bool auto_check: whether to automatically check the rate limit in the before_request
+    * **auto_check**: whether to automatically check the rate limit in the before_request
      chain of the application. default ``True``
-    :param bool swallow_errors: whether to swallow errors when hitting a rate limit.
+    * **swallow_errors**: whether to swallow errors when hitting a rate limit.
      An exception will still be logged. default ``False``
-    :param list in_memory_fallback: a variable list of strings or callables returning strings denoting fallback
+    * **in_memory_fallback**: a variable list of strings or callables returning strings denoting fallback
      limits to apply when the storage is down.
-    :param bool in_memory_fallback_enabled: simply falls back to in memory storage
+    * **in_memory_fallback_enabled**: simply falls back to in memory storage
      when the main storage is down and inherits the original limits.
-    :param str key_prefix: prefix prepended to rate limiter keys.
-    :param Optional[str] config_filename: name of the config file for Starlette from which to load settings
+    * **key_prefix**: prefix prepended to rate limiter keys.
+    * **config_filename**: name of the config file for Starlette from which to load settings
      for the rate limiter. Defaults to ".env".
     """
 
@@ -269,8 +291,8 @@ class Limiter:
         """
         Starlette startup event handler that links the app with the Limiter instance.
         """
-        app.state.limiter = self
-        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+        app.state.limiter = self  # type: ignore
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
 
     def get_app_config(self, key: str, default_value: T = None) -> T:
         """
@@ -568,14 +590,17 @@ class Limiter:
                 async def async_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
                     request = kwargs.get("request", args[idx] if args else None)
-                    assert isinstance(request, Request)
+                    if not isinstance(request, Request):
+                        raise Exception(
+                            "parameter `request` must be an instance of starlette.requests.Request"
+                        )
 
                     if self._auto_check and not getattr(
                         request.state, "_rate_limiting_complete", False
                     ):
                         self._check_request_limit(request, func, False)
                         request.state._rate_limiting_complete = True
-                    response = await func(*args, **kwargs)
+                    response = await func(*args, **kwargs)  # type: ignore
                     self._inject_headers(response, request.state.view_rate_limit)
                     return response
 
@@ -587,7 +612,10 @@ class Limiter:
                 def sync_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
                     request = kwargs.get("request", args[idx] if args else None)
-                    assert isinstance(request, Request)
+                    if not isinstance(request, Request):
+                        raise Exception(
+                            "parameter `request` must be an instance of starlette.requests.Request"
+                        )
 
                     if self._auto_check and not getattr(
                         request.state, "_rate_limiting_complete", False
@@ -613,21 +641,21 @@ class Limiter:
         override_defaults: bool = True
     ) -> Callable:
         """
-        decorator to be used for rate limiting individual routes.
+        Decorator to be used for rate limiting individual routes.
 
-        :param limit_value: rate limit string or a callable that returns a string.
+        * **limit_value**: rate limit string or a callable that returns a string.
          :ref:`ratelimit-string` for more details.
-        :param function key_func: function/lambda to extract the unique identifier for
+        * **key_func**: function/lambda to extract the unique identifier for
          the rate limit. defaults to remote address of the request.
-        :param bool per_method: whether the limit is sub categorized into the http
+        * **per_method**: whether the limit is sub categorized into the http
          method of the request.
-        :param list methods: if specified, only the methods in this list will be rate
+        * **methods**: if specified, only the methods in this list will be rate
          limited (default: None).
-        :param error_message: string (or callable that returns one) to override the
+        * **error_message**: string (or callable that returns one) to override the
          error message used in the response.
-        :param exempt_when:
-        :param override_defaults: whether to override the default limits (default: True)
-        :return:
+        * **exempt_when**: function returning a boolean indicating whether to exempt
+        the route from the limit
+        * **override_defaults**: whether to override the default limits (default: True)
         """
         return self.__limit_decorator(
             limit_value,
@@ -649,18 +677,23 @@ class Limiter:
         override_defaults: bool = True,
     ) -> Callable:
         """
-        decorator to be applied to multiple routes sharing the same rate limit.
+        Decorator to be applied to multiple routes sharing the same rate limit.
 
-        :param limit_value: rate limit string or a callable that returns a string.
+        * **limit_value**: rate limit string or a callable that returns a string.
          :ref:`ratelimit-string` for more details.
-        :param scope: a string or callable that returns a string
+        * **scope**: a string or callable that returns a string
          for defining the rate limiting scope.
-        :param function key_func: function/lambda to extract the unique identifier for
+        * **key_func**: function/lambda to extract the unique identifier for
          the rate limit. defaults to remote address of the request.
-        :param error_message: string (or callable that returns one) to override the
+        * **per_method**: whether the limit is sub categorized into the http
+         method of the request.
+        * **methods**: if specified, only the methods in this list will be rate
+         limited (default: None).
+        * **error_message**: string (or callable that returns one) to override the
          error message used in the response.
-        :param exempt_when:
-        :param override_defaults: whether to override the default limits (default: True)
+        * **exempt_when**: function returning a boolean indicating whether to exempt
+        the route from the limit
+        * **override_defaults**: whether to override the default limits (default: True)
         """
         return self.__limit_decorator(
             limit_value,
@@ -674,8 +707,7 @@ class Limiter:
 
     def exempt(self, obj):
         """
-        decorator to mark a view as exempt from
-        rate limits.
+        Decorator to mark a view as exempt from rate limits.
         """
         name = "%s.%s" % (obj.__module__, obj.__name__)
 

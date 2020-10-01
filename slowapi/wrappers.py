@@ -44,7 +44,7 @@ class Limit(object):
             return ""
         else:
             return (
-                self.__scope(request.endpoint)
+                self.__scope(request.endpoint)  # type: ignore
                 if callable(self.__scope)
                 else self.__scope
             )

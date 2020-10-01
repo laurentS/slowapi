@@ -5,7 +5,7 @@ from functools import wraps
 
 import redis
 from fastapi import FastAPI
-from mock import mock
+from mock import mock  # type: ignore
 from starlette.applications import Starlette
 
 from slowapi.errors import RateLimitExceeded
