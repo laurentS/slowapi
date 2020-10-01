@@ -65,7 +65,6 @@ Supported now:
 - support for sync and async HTTP endpoints
 - Support for shared limits across a set of routes
 
-
 # Limitations and known issues
 
   * There is no support for default limits yet (in other words, the only default limit supported is "unlimited")
@@ -92,6 +91,8 @@ and not:
 
 PRs are more than welcome! Please include tests for your changes :)
 
+Please run [black](black.readthedocs.io/) on your code before committing, or your PR will not pass the tests.
+
 The package uses [poetry](https://python-poetry.org) to manage dependencies. To setup your dev env:
 
 ```bash
@@ -107,3 +108,5 @@ $ pytest
 
 Credits go to [flask-limiter](https://github.com/alisaifee/flask-limiter) of which SlowApi is a (still partial) adaptation to Starlette and FastAPI.
 It's also important to mention that the actual rate limiting work is done by [limits](https://github.com/alisaifee/limits/), `slowapi` is just a wrapper around it.
+
+The documentation is built using [mkDocs](https://www.mkdocs.org/) and the API documentation is generated using [mkautodoc](https://github.com/tomchristie/mkautodoc).

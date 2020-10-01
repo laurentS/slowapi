@@ -9,6 +9,7 @@ readme = "README.md"
 
 repository = "https://github.com/laurents/slowapi"
 homepage = "https://github.com/laurents/slowapi"
+documentation = "https://slowapi.readthedocs.io/en/latest/"
 
 include = ["slowapi/py.typed"]
 
@@ -29,6 +30,7 @@ hiro = "^0.5.1"
 requests = "^2.22.0"
 pytest = "^5.3.5"
 mkdocs = "^1.1.2"
+mkautodoc = "^0.1.0"
 
 [tool.black]
 line-length = 88

@@ -1,1 +1,13 @@
 site_name: SlowApi Documentation
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - mkautodoc
+
+extra_css:
+    - css/custom.css
+
+nav:
+- SlowApi: index.md
+- api.md
