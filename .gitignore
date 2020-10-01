@@ -1,5 +1,9 @@
+# testing
 .pytest_cache
 __pycache__
+
+# typing
+.mypy_cache
 
 # editors
 .idea

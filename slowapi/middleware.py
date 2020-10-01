@@ -1,3 +1,5 @@
+from typing import Union
+
 from starlette.applications import Starlette
 from starlette.middleware.base import (
     BaseHTTPMiddleware,
@@ -6,6 +8,7 @@ from starlette.middleware.base import (
 )
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.routing import Route, BaseRoute, WebSocketRoute
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
@@ -19,8 +22,8 @@ class SlowAPIMiddleware(BaseHTTPMiddleware):
         handler = None
         for route in app.routes:
             match, _ = route.matches(request.scope)
-            if match.FULL:
-                handler = route.endpoint
+            if match.FULL and hasattr(route, "endpoint"):
+                handler = route.endpoint  # type: ignore
         # if we can't find the route handler
         if handler is None:
             return await call_next(request)
@@ -50,3 +53,4 @@ class SlowAPIMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             response = limiter._inject_headers(response, request.state.view_rate_limit)
             return response
+        return await call_next(request)

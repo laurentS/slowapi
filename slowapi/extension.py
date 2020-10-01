@@ -269,7 +269,7 @@ class Limiter:
         if not self._application_limits and app_limits:
             self._application_limits = [
                 LimitGroup(
-                    app_limits, self._key_func, "global", False, None, None, None
+                    app_limits, self._key_func, "global", False, None, None, None, False
                 )
             ]
 
@@ -278,7 +278,9 @@ class Limiter:
         )
         if not self._default_limits and conf_limits:
             self._default_limits = [
-                LimitGroup(conf_limits, self._key_func, None, False, None, None, None)
+                LimitGroup(
+                    conf_limits, self._key_func, None, False, None, None, None, False
+                )
             ]
         fallback_enabled = self.get_app_config(C.IN_MEMORY_FALLBACK_ENABLED, False)
         fallback_limits: Optional[StrOrCallableStr] = self.get_app_config(
@@ -287,7 +289,14 @@ class Limiter:
         if not self._in_memory_fallback and fallback_limits:
             self._in_memory_fallback = [
                 LimitGroup(
-                    fallback_limits, self._key_func, None, False, None, None, None
+                    fallback_limits,
+                    self._key_func,
+                    None,
+                    False,
+                    None,
+                    None,
+                    None,
+                    False,
                 )
             ]
         if not self._in_memory_fallback_enabled:
