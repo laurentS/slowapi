@@ -186,15 +186,27 @@ class Limiter:
 
         for limit in set(default_limits):
             self._default_limits.extend(
-                [LimitGroup(limit, self._key_func, None, False, None, None, None, False)]
+                [
+                    LimitGroup(
+                        limit, self._key_func, None, False, None, None, None, False
+                    )
+                ]
             )
         for limit in application_limits:
             self._application_limits.extend(
-                [LimitGroup(limit, self._key_func, "global", False, None, None, None, False)]
+                [
+                    LimitGroup(
+                        limit, self._key_func, "global", False, None, None, None, False
+                    )
+                ]
             )
         for limit in in_memory_fallback:
             self._in_memory_fallback.extend(
-                [LimitGroup(limit, self._key_func, None, False, None, None, None, False)]
+                [
+                    LimitGroup(
+                        limit, self._key_func, None, False, None, None, None, False
+                    )
+                ]
             )
         self._route_limits: Dict[str, List[Limit]] = {}
         self._dynamic_route_limits: Dict[str, List[LimitGroup]] = {}
@@ -496,9 +508,11 @@ class Limiter:
                 combined_defaults = all(
                     not limit.override_defaults for limit in route_limits
                 )
-                if not route_limits and not (
-                    in_middleware and name in self.__marked_for_limiting
-                ) or combined_defaults:
+                if (
+                    not route_limits
+                    and not (in_middleware and name in self.__marked_for_limiting)
+                    or combined_defaults
+                ):
                     all_limits += list(itertools.chain(*self._default_limits))
             # actually check the limits, so far we've only computed the list of limits to check
             self.__evaluate_limits(request, endpoint, all_limits)
@@ -528,7 +542,7 @@ class Limiter:
         methods: Optional[List[str]] = None,
         error_message: Optional[str] = None,
         exempt_when: Optional[Callable[..., bool]] = None,
-        override_defaults: bool = True
+        override_defaults: bool = True,
     ) -> Callable[..., Any]:
 
         _scope = scope if shared else None
@@ -638,7 +652,7 @@ class Limiter:
         methods: Optional[List[str]] = None,
         error_message: Optional[str] = None,
         exempt_when: Optional[Callable[..., bool]] = None,
-        override_defaults: bool = True
+        override_defaults: bool = True,
     ) -> Callable:
         """
         Decorator to be used for rate limiting individual routes.
@@ -664,7 +678,7 @@ class Limiter:
             methods=methods,
             error_message=error_message,
             exempt_when=exempt_when,
-            override_defaults=override_defaults
+            override_defaults=override_defaults,
         )
 
     def shared_limit(

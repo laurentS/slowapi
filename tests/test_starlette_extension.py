@@ -171,8 +171,9 @@ class TestDecorators(TestSlowapi):
 
     def test_exempt_decorator(self):
         app, limiter = self.build_starlette_app(
-            headers_enabled=True, key_func=get_remote_address, default_limits=["1/minute"]
-
+            headers_enabled=True,
+            key_func=get_remote_address,
+            default_limits=["1/minute"],
         )
 
         @app.route("/t1")
@@ -199,7 +200,9 @@ class TestDecorators(TestSlowapi):
     # todo: more tests - see https://github.com/alisaifee/flask-limiter/blob/55df08f14143a7e918fc033067a494248ab6b0c5/tests/test_decorators.py#L187
     def test_default_and_decorator_limit_merging(self):
         # test pool has 100 reqs left
-        app, limiter = self.build_starlette_app(key_func=lambda: "test", default_limits=["10/minute"])
+        app, limiter = self.build_starlette_app(
+            key_func=lambda: "test", default_limits=["10/minute"]
+        )
 
         # ip pool has 50 reqs for 127.0.0.14
         @limiter.limit("5 per minute", key_func=get_ipaddr, override_defaults=False)
@@ -220,5 +223,6 @@ class TestDecorators(TestSlowapi):
 
             assert cli.get("/t1").status_code == 429
             assert (
-                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
-                    == 429)
+                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                == 429
+            )

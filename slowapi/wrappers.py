@@ -17,7 +17,7 @@ class Limit(object):
         methods: Optional[List[str]],
         error_message: Optional[Union[str, Callable[..., str]]],
         exempt_when: Optional[Callable[..., bool]],
-        override_defaults: bool
+        override_defaults: bool,
     ) -> None:
         self.limit = limit
         self.key_func = key_func
