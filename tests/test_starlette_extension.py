@@ -199,12 +199,10 @@ class TestDecorators(TestSlowapi):
 
     # todo: more tests - see https://github.com/alisaifee/flask-limiter/blob/55df08f14143a7e918fc033067a494248ab6b0c5/tests/test_decorators.py#L187
     def test_default_and_decorator_limit_merging(self):
-        # test pool has 100 reqs left
         app, limiter = self.build_starlette_app(
             key_func=lambda: "test", default_limits=["10/minute"]
         )
 
-        # ip pool has 50 reqs for 127.0.0.14
         @limiter.limit("5 per minute", key_func=get_ipaddr, override_defaults=False)
         async def t1(request: Request):
             return PlainTextResponse("test")
@@ -216,10 +214,8 @@ class TestDecorators(TestSlowapi):
             for i in range(0, 10):
                 response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
                 assert response.status_code == 200 if i < 5 else 429
-            # now ip pool for 127.0.0.14 has 0 reqs left
             for i in range(5):
                 assert cli.get("/t1").status_code == 200
-            # now test pool has 0 reqs left
 
             assert cli.get("/t1").status_code == 429
             assert (
