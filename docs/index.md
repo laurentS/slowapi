@@ -51,6 +51,11 @@ The above app will have a route `t1` that will accept up to 5 requests per minut
     @limiter.limit("5/minute")
     async def homepage(request: Request):
         return PlainTextResponse("test")
+
+    @app.get("/mars")
+    @limiter.limit("5/minute")
+    async def homepage(request: Request, response: Response):
+        return {"key": "value"}
 ```
 
 This will provide the same result, but with a FastAPI app.
@@ -84,6 +89,17 @@ and not:
     async def myendpoint()
         pass
 ```
+
+  * Similarly, if the returned response is not an instance of `Response` and
+will be built at an upper level in the middleware stack, you'll need to provide
+the response object explicitly if you want the `Limiter` to modify the headers
+(`headers_enabled=True`):
+
+    ```python
+    @limiter.limit("5/minute")
+    async def myendpoint(request: Request, response: Response)
+        return {"key": "value"}
+    ```
 
   * `websocket` endpoints are not supported yet.
 
