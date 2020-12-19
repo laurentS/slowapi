@@ -378,16 +378,18 @@ class Limiter:
 
                 if existing_retry_after_header is not None:
                     # might be in http-date format
-                    retry_after = parsedate_to_datetime(existing_retry_after_header)
+                    try:
+                        retry_after = parsedate_to_datetime(existing_retry_after_header)
+                    except TypeError:
+                        retry_after = None
 
-                    # parse_date failure returns None
                     if retry_after is None:
                         retry_after = time.time() + int(existing_retry_after_header)
 
                     if isinstance(retry_after, datetime.datetime):
-                        retry_after_int: int = int(time.mktime(retry_after.timetuple()))
+                        retry_after = time.mktime(retry_after.timetuple())
 
-                    reset_in = max(retry_after_int, reset_in)
+                    reset_in = max(int(retry_after), reset_in)
 
                 response.headers[self._header_mapping[HEADERS.RETRY_AFTER]] = (
                     formatdate(reset_in)
