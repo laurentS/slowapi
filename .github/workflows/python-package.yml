@@ -24,19 +24,19 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install Poetry
-      uses: dschep/install-poetry-action@v1.3
+      uses: snok/install-poetry@v1.1.1
       with:
         # Version of Poetry to use
-        version: 1.0.10
+        version: 1.1.4
     - name: Install dependencies
       run: |
         poetry install
     - name: Check formatting with black
       run: |
-        black --check .
+        poetry run black --check .
     - name: Check typing annotations with mypy
       run: |
-        mypy .
+        poetry run mypy .
     - name: Test with pytest
       run: |
-        pytest
+        poetry run pytest
