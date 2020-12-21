@@ -33,10 +33,10 @@ jobs:
         poetry install
     - name: Check formatting with black
       run: |
-        black --check .
+        poetry run black --check .
     - name: Check typing annotations with mypy
       run: |
-        mypy .
+        poetry run mypy .
     - name: Test with pytest
       run: |
-        pytest
+        poetry run pytest
