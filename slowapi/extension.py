@@ -627,7 +627,7 @@ class Limiter:
                         self._check_request_limit(request, func, False)
                         request.state._rate_limiting_complete = True
                     response = await func(*args, **kwargs)  # type: ignore
-                    if self._headers_enabled and not isinstance(response, Response):
+                    if not isinstance(response, Response):
                         # get the response object from the decorated endpoint function
                         self._inject_headers(kwargs.get("response"), request.state.view_rate_limit)
                     else:
