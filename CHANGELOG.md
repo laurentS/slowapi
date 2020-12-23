@@ -2,6 +2,10 @@
 
 ## [0.1.3] - 2020-12-24
 
+### Added
+
+- Added some setup examples in documentation
+
 ### Fixed
 
 - Routes returning a dict don't error when turning on headers (#18), thanks to @glinmac
