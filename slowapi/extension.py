@@ -630,7 +630,7 @@ class Limiter:
                     if not isinstance(response, Response):
                         # get the response object from the decorated endpoint function
                         self._inject_headers(
-                            kwargs.get("response"), request.state.view_rate_limit
+                            kwargs.get("response"), request.state.view_rate_limit  # type: ignore
                         )
                     else:
                         self._inject_headers(response, request.state.view_rate_limit)
@@ -658,7 +658,7 @@ class Limiter:
                     if not isinstance(response, Response):
                         # get the response object from the decorated endpoint function
                         self._inject_headers(
-                            kwargs.get("response"), request.state.view_rate_limit
+                            kwargs.get("response"), request.state.view_rate_limit  # type: ignore
                         )
                     else:
                         self._inject_headers(response, request.state.view_rate_limit)
