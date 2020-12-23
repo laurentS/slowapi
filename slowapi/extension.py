@@ -354,6 +354,10 @@ class Limiter:
         self, response: Response, current_limit: Tuple[RateLimitItem, List[str]]
     ) -> Response:
         if self.enabled and self._headers_enabled and current_limit is not None:
+            if not isinstance(response, Response):
+                raise Exception(
+                    "parameter `response` must be an instance of starlette.responses.Response"
+                )
             try:
                 window_stats: Tuple[int, int] = self.limiter.get_window_stats(
                     current_limit[0], *current_limit[1]
@@ -370,7 +374,6 @@ class Limiter:
                 )
 
                 # response may have an existing retry after
-                print(response.headers)
                 existing_retry_after_header = response.headers.get("Retry-After")
 
                 if existing_retry_after_header is not None:
@@ -624,7 +627,13 @@ class Limiter:
                         self._check_request_limit(request, func, False)
                         request.state._rate_limiting_complete = True
                     response = await func(*args, **kwargs)  # type: ignore
-                    self._inject_headers(response, request.state.view_rate_limit)
+                    if not isinstance(response, Response):
+                        # get the response object from the decorated endpoint function
+                        self._inject_headers(
+                            kwargs.get("response"), request.state.view_rate_limit  # type: ignore
+                        )
+                    else:
+                        self._inject_headers(response, request.state.view_rate_limit)
                     return response
 
                 return async_wrapper
@@ -646,7 +655,13 @@ class Limiter:
                         self._check_request_limit(request, func, False)
                         request.state._rate_limiting_complete = True
                     response = func(*args, **kwargs)
-                    self._inject_headers(response, request.state.view_rate_limit)
+                    if not isinstance(response, Response):
+                        # get the response object from the decorated endpoint function
+                        self._inject_headers(
+                            kwargs.get("response"), request.state.view_rate_limit  # type: ignore
+                        )
+                    else:
+                        self._inject_headers(response, request.state.view_rate_limit)
                     return response
 
                 return sync_wrapper
