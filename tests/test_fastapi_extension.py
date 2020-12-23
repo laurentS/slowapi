@@ -22,7 +22,6 @@ class TestDecorators(TestSlowapi):
             response = client.get("/t1")
             assert response.status_code == 200 if i < 5 else 429
 
-
     def test_single_decorator_with_headers(self):
         app, limiter = self.build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
 
@@ -35,8 +34,10 @@ class TestDecorators(TestSlowapi):
         for i in range(0, 10):
             response = client.get("/t1")
             assert response.status_code == 200 if i < 5 else 429
-            assert response.headers.get('X-RateLimit-Limit') is not None if i < 5 else True
-            assert response.headers.get('Retry-After') is not None if i < 5 else True
+            assert (
+                response.headers.get("X-RateLimit-Limit") is not None if i < 5 else True
+            )
+            assert response.headers.get("Retry-After") is not None if i < 5 else True
 
     def test_single_decorator_not_response(self):
         app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
@@ -63,8 +64,10 @@ class TestDecorators(TestSlowapi):
         for i in range(0, 10):
             response = client.get("/t1")
             assert response.status_code == 200 if i < 5 else 429
-            assert response.headers.get('X-RateLimit-Limit') is not None if i < 5 else True
-            assert response.headers.get('Retry-After') is not None if i < 5 else True
+            assert (
+                response.headers.get("X-RateLimit-Limit") is not None if i < 5 else True
+            )
+            assert response.headers.get("Retry-After") is not None if i < 5 else True
 
     def test_multiple_decorators(self):
         app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
@@ -100,7 +103,7 @@ class TestDecorators(TestSlowapi):
         )  # effectively becomes a limit for all users
         @limiter.limit("50/minute")  # per ip as per default key_func
         async def t1(request: Request, response: Response):
-            return {"key":"value"}
+            return {"key": "value"}
 
         with hiro.Timeline().freeze() as timeline:
             cli = TestClient(app)
