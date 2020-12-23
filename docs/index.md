@@ -65,14 +65,14 @@ This will provide the same result, but with a FastAPI app.
 Most feature are coming from (will come from) FlaskLimiter and the underlying [limits](https://limits.readthedocs.io/).
 
 Supported now:
+
 - Single and multiple `limit` decorator on endpoint functions to apply limits
 - redis, memcached and memory backends to track your limits (memory as a fallback)
 - support for sync and async HTTP endpoints
 - Support for shared limits across a set of routes
+- Support for default global limit
 
 # Limitations and known issues
-
-  * There is no support for default limits yet (in other words, the only default limit supported is "unlimited")
 
   * The `request` argument must be explicitly passed to your endpoint, or `slowapi` won't be able to hook into it. In other words, write:
 
@@ -102,6 +102,10 @@ the response object explicitly if you want the `Limiter` to modify the headers
     ```
 
   * `websocket` endpoints are not supported yet.
+
+# Examples of setup
+
+See [examples](examples.md)
 
 # Developing and contributing
 

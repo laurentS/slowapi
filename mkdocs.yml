@@ -10,4 +10,5 @@ extra_css:
 
 nav:
 - SlowApi: index.md
+- examples.md
 - api.md
