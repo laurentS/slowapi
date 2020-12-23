@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.1.3] - 2020-12-24
+
+### Fixed
+
+- Routes returning a dict don't error when turning on headers (#18), thanks to @glinmac
+- Fix CI crash following github actions changes in env settings
+
 ## [0.1.2] - 2020-10-01
 
 ### Added
