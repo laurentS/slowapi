@@ -374,7 +374,6 @@ class Limiter:
                 )
 
                 # response may have an existing retry after
-                print(response.headers)
                 existing_retry_after_header = response.headers.get("Retry-After")
 
                 if existing_retry_after_header is not None:
