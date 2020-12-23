@@ -56,8 +56,8 @@ class TestDecorators(TestSlowapi):
 
         @app.get("/t1")
         @limiter.limit("5/minute")
-        async def t1(request: Request):
-            return PlainTextResponse("test")
+        async def t1(request: Request, response: Response):
+            return {"key": "value"}
 
         client = TestClient(app)
         for i in range(0, 10):
