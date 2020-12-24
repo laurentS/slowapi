@@ -108,7 +108,7 @@ class TestDecorators(TestSlowapi):
             for i in range(0, 10):
                 response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
                 assert response.status_code == 200 if i < 5 else 429
-                assert response.headers.get('Retry-After') if i < 5 else True
+                assert response.headers.get("Retry-After") if i < 5 else True
             for i in range(5):
                 assert cli.get("/t1").status_code == 200
 

@@ -381,15 +381,15 @@ class Limiter:
                     try:
                         retry_after = parsedate_to_datetime(existing_retry_after_header)
                     except TypeError:
-                        retry_after = None
+                        retry_after = None  # type: ignore
 
                     if retry_after is None:
-                        retry_after = time.time() + int(existing_retry_after_header)
+                        retry_after = time.time() + int(existing_retry_after_header)  # type: ignore
 
                     if isinstance(retry_after, datetime.datetime):
-                        retry_after = time.mktime(retry_after.timetuple())
+                        retry_after = time.mktime(retry_after.timetuple())  # type: ignore
 
-                    reset_in = max(int(retry_after), reset_in)
+                    reset_in = max(int(retry_after), reset_in)  # type: ignore
 
                 response.headers[self._header_mapping[HEADERS.RETRY_AFTER]] = (
                     formatdate(reset_in)
