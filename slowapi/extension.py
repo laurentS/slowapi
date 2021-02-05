@@ -127,6 +127,7 @@ class Limiter:
     * **in_memory_fallback_enabled**: simply falls back to in memory storage
      when the main storage is down and inherits the original limits.
     * **key_prefix**: prefix prepended to rate limiter keys.
+    * **enabled**: set to False to deactivate the limiter (default: True)
     * **config_filename**: name of the config file for Starlette from which to load settings
      for the rate limiter. Defaults to ".env".
     """
@@ -615,25 +616,29 @@ class Limiter:
                 @functools.wraps(func)
                 async def async_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
-                    request = kwargs.get("request", args[idx] if args else None)
-                    if not isinstance(request, Request):
-                        raise Exception(
-                            "parameter `request` must be an instance of starlette.requests.Request"
-                        )
+                    if self.enabled:
+                        request = kwargs.get("request", args[idx] if args else None)
+                        if not isinstance(request, Request):
+                            raise Exception(
+                                "parameter `request` must be an instance of starlette.requests.Request"
+                            )
 
-                    if self._auto_check and not getattr(
-                        request.state, "_rate_limiting_complete", False
-                    ):
-                        self._check_request_limit(request, func, False)
-                        request.state._rate_limiting_complete = True
+                        if self._auto_check and not getattr(
+                            request.state, "_rate_limiting_complete", False
+                        ):
+                            self._check_request_limit(request, func, False)
+                            request.state._rate_limiting_complete = True
                     response = await func(*args, **kwargs)  # type: ignore
-                    if not isinstance(response, Response):
-                        # get the response object from the decorated endpoint function
-                        self._inject_headers(
-                            kwargs.get("response"), request.state.view_rate_limit  # type: ignore
-                        )
-                    else:
-                        self._inject_headers(response, request.state.view_rate_limit)
+                    if self.enabled:
+                        if not isinstance(response, Response):
+                            # get the response object from the decorated endpoint function
+                            self._inject_headers(
+                                kwargs.get("response"), request.state.view_rate_limit  # type: ignore
+                            )
+                        else:
+                            self._inject_headers(
+                                response, request.state.view_rate_limit
+                            )
                     return response
 
                 return async_wrapper
@@ -643,25 +648,29 @@ class Limiter:
                 @functools.wraps(func)
                 def sync_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
-                    request = kwargs.get("request", args[idx] if args else None)
-                    if not isinstance(request, Request):
-                        raise Exception(
-                            "parameter `request` must be an instance of starlette.requests.Request"
-                        )
+                    if self.enabled:
+                        request = kwargs.get("request", args[idx] if args else None)
+                        if not isinstance(request, Request):
+                            raise Exception(
+                                "parameter `request` must be an instance of starlette.requests.Request"
+                            )
 
-                    if self._auto_check and not getattr(
-                        request.state, "_rate_limiting_complete", False
-                    ):
-                        self._check_request_limit(request, func, False)
-                        request.state._rate_limiting_complete = True
+                        if self._auto_check and not getattr(
+                            request.state, "_rate_limiting_complete", False
+                        ):
+                            self._check_request_limit(request, func, False)
+                            request.state._rate_limiting_complete = True
                     response = func(*args, **kwargs)
-                    if not isinstance(response, Response):
-                        # get the response object from the decorated endpoint function
-                        self._inject_headers(
-                            kwargs.get("response"), request.state.view_rate_limit  # type: ignore
-                        )
-                    else:
-                        self._inject_headers(response, request.state.view_rate_limit)
+                    if self.enabled:
+                        if not isinstance(response, Response):
+                            # get the response object from the decorated endpoint function
+                            self._inject_headers(
+                                kwargs.get("response"), request.state.view_rate_limit  # type: ignore
+                            )
+                        else:
+                            self._inject_headers(
+                                response, request.state.view_rate_limit
+                            )
                     return response
 
                 return sync_wrapper
