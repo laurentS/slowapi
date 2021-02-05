@@ -8,7 +8,7 @@
 
 ## Wrappers around Limit objects
 
-These wrap the `RateLimitItem` from [alisaifee/limits](limits.readthedocs.io/).
+These wrap the `RateLimitItem` from [alisaifee/limits](https://limits.readthedocs.io/).
 
 :::slowapi.wrappers.Limit
     :docstring:
