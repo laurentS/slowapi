@@ -34,3 +34,24 @@ The tests show a lot of different use cases that are not all covered here.
     def t(request: Request):
         return PlainTextResponse("I'm unlimited")
 ```
+
+## Disable the limiter entirely
+
+You might want to disable the limiter, for instance for testing, etc...
+Note that this disables it entirely, for all users. It is essentially as if the limiter was not there.
+Simply pass `enabled=False` to the constructor.
+
+```python
+    limiter = Limiter(key_func=get_remote_address, enabled=False)
+
+    @app.route("/someroute")
+    @limiter.exempt
+    def t(request: Request):
+        return PlainTextResponse("I'm unlimited")
+```
+
+You can always switch this during the lifetime of the limiter:
+
+```python
+    limiter.enabled = False
+```

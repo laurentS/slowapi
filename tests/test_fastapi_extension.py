@@ -206,3 +206,28 @@ class TestDecorators(TestSlowapi):
         assert exc_info.match(
             r"""parameter `response` must be an instance of starlette.responses.Response"""
         )
+
+    def test_disabled_limiter(self):
+        """
+        Check that the limiter does nothing if disabled (both sync and async)
+        """
+        app, limiter = self.build_fastapi_app(key_func=get_ipaddr, enabled=False)
+
+        @app.get("/t1")
+        @limiter.limit("5/minute")
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        @app.get("/t2")
+        @limiter.limit("5/minute")
+        def t2(request: Request):
+            return PlainTextResponse("test")
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1")
+            assert response.status_code == 200
+
+        for i in range(0, 10):
+            response = client.get("/t2")
+            assert response.status_code == 200
