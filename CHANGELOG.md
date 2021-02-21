@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.1.4] - 2021-02-21
+
+- Made the enabled option actually useful (thanks @kodekracker for the report) #35
+- Fixed 2 bugs in middleware #30 and #37 (thanks @xuxygo for the PR, and @papapumpnz for the report)
+- Fixed errors in docs
+- Bump lxml to 4.6.2 (dependabot - only used for doc generation)
+
 ## [0.1.3] - 2020-12-24
 
 ### Added
