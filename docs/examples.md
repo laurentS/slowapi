@@ -55,3 +55,13 @@ You can always switch this during the lifetime of the limiter:
 ```python
     limiter.enabled = False
 ```
+
+## Use redis as backend for the limiter
+
+```python
+limiter = Limiter(key_func=get_remote_address, storage_uri="redis://<host>:<port>/n")
+```
+
+where the /n in the redis url is the database number. To use the default one, just drop the /n from the url.
+
+There are more examples in the [limits docs](https://limits.readthedocs.io/en/stable/storage.html) which is the library slowapi uses to manage storage.
