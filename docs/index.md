@@ -49,6 +49,7 @@ The above app will have a route `t1` that will accept up to 5 requests per minut
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+    # Note: the route decorator must be above the limit decorator, not below it
     @app.get("/home")
     @limiter.limit("5/minute")
     async def homepage(request: Request):
@@ -101,6 +102,28 @@ the response object explicitly if you want the `Limiter` to modify the headers
     @limiter.limit("5/minute")
     async def myendpoint(request: Request, response: Response)
         return {"key": "value"}
+    ```
+
+  * The order of decorators matters. It is not a bug, the `limit` decorator needs the `request` argument in the function it decorates (see above).
+    This works
+    ```
+    @router.get("/test")
+    @limiter.limit("2/minute")
+    async def test(
+            request: Request
+    ):
+        return "hi"
+    ```
+
+    but this doesnt
+
+    ```
+    @limiter.limit("2/minute")
+    @router.get("/test")
+    async def test(
+            request: Request
+    ):
+        return "hi"
     ```
 
   * `websocket` endpoints are not supported yet.
