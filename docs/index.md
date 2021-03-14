@@ -132,7 +132,7 @@ async def test(
 return "hi"
 ```
 
-# Websocket endpoints
+## Websocket endpoints
 
 `websocket` endpoints are not supported yet.
 
