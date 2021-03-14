@@ -77,7 +77,9 @@ Supported now:
 
 # Limitations and known issues
 
-  * The `request` argument must be explicitly passed to your endpoint, or `slowapi` won't be able to hook into it. In other words, write:
+## Request argument
+
+The `request` argument must be explicitly passed to your endpoint, or `slowapi` won't be able to hook into it. In other words, write:
 
 ```python
     @limiter.limit("5/minute")
@@ -93,40 +95,46 @@ and not:
         pass
 ```
 
-  * Similarly, if the returned response is not an instance of `Response` and
+## Response type
+
+Similarly, if the returned response is not an instance of `Response` and
 will be built at an upper level in the middleware stack, you'll need to provide
 the response object explicitly if you want the `Limiter` to modify the headers
 (`headers_enabled=True`):
 
-    ```python
-    @limiter.limit("5/minute")
-    async def myendpoint(request: Request, response: Response)
-        return {"key": "value"}
-    ```
+```python
+@limiter.limit("5/minute")
+async def myendpoint(request: Request, response: Response)
+return {"key": "value"}
+```
 
-  * The order of decorators matters. It is not a bug, the `limit` decorator needs the `request` argument in the function it decorates (see above).
-    This works
-    ```
-    @router.get("/test")
-    @limiter.limit("2/minute")
-    async def test(
-            request: Request
-    ):
-        return "hi"
-    ```
+## Decorators order
 
-    but this doesnt
+The order of decorators matters. It is not a bug, the `limit` decorator needs the `request` argument in the function it decorates (see above).
+This works
+```
+@router.get("/test")
+@limiter.limit("2/minute")
+async def test(
+    request: Request
+):
+return "hi"
+```
 
-    ```
-    @limiter.limit("2/minute")
-    @router.get("/test")
-    async def test(
-            request: Request
-    ):
-        return "hi"
-    ```
+but this doesnt
 
-  * `websocket` endpoints are not supported yet.
+```
+@limiter.limit("2/minute")
+@router.get("/test")
+async def test(
+    request: Request
+):
+return "hi"
+```
+
+# Websocket endpoints
+
+`websocket` endpoints are not supported yet.
 
 # Examples of setup
 
