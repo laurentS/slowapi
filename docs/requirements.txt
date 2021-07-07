@@ -32,7 +32,7 @@ packaging==20.3
 pathspec==0.7.0
 pluggy==0.13.1
 py==1.8.1
-pydantic==1.4
+pydantic==1.6.2
 pyparsing==2.4.6
 pytest==5.3.5
 pyyaml==5.4
