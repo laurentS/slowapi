@@ -35,7 +35,7 @@ py==1.8.1
 pydantic==1.4
 pyparsing==2.4.6
 pytest==5.3.5
-pyyaml==5.3.1
+pyyaml==5.4
 redis==3.4.1
 regex==2020.2.20
 requests==2.23.0
