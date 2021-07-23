@@ -33,6 +33,7 @@ from limits.storage import Storage  # type: ignore
 from limits.storage import MemoryStorage, storage_from_string
 from limits.strategies import STRATEGIES, RateLimiter  # type: ignore
 from starlette.applications import Starlette
+from starlette.concurrency import run_in_threadpool
 from starlette.config import Config
 from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -79,7 +80,9 @@ class HEADERS:
 MAX_BACKEND_CHECKS = 5
 
 
-def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:
+async def _rate_limit_exceeded_handler(
+    request: Request, exc: RateLimitExceeded
+) -> Response:
     """
     Build a simple JSON response that includes the details of the rate limit
     that was hit. If no limit is hit, the countdown is added to headers.
@@ -87,7 +90,7 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Re
     response = JSONResponse(
         {"error": f"Rate limit exceeded: {exc.detail}"}, status_code=429
     )
-    response = request.app.state.limiter._inject_headers(
+    response = await request.app.state.limiter._inject_headers(
         response, request.state.view_rate_limit
     )
     return response
@@ -309,20 +312,13 @@ class Limiter:
             self._fallback_storage = MemoryStorage()
             self._fallback_limiter = STRATEGIES[strategy](self._fallback_storage)
 
-    def slowapi_startup(self) -> None:
-        """
-        Starlette startup event handler that links the app with the Limiter instance.
-        """
-        app.state.limiter = self  # type: ignore
-        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
-
     def get_app_config(self, key: str, default_value: T = None) -> T:
         """
         Place holder until we find a better way to load config from app
         """
         return self.app_config(key, default=default_value, cast=type(default_value))
 
-    def __should_check_backend(self) -> bool:
+    async def __should_check_backend(self) -> bool:
         if self.__check_backend_count > MAX_BACKEND_CHECKS:
             self.__check_backend_count = 0
         if time.time() - self.__last_check_backend > pow(2, self.__check_backend_count):
@@ -331,12 +327,12 @@ class Limiter:
             return True
         return False
 
-    def reset(self) -> None:
+    async def reset(self) -> None:
         """
         resets the storage if it supports being reset
         """
         try:
-            self._storage.reset()
+            await run_in_threadpool(self._storage.reset)
             self.logger.info("Storage has been reset and all limits cleared")
         except NotImplementedError:
             self.logger.warning("This storage type does not support being reset")
@@ -351,7 +347,7 @@ class Limiter:
         else:
             return self._limiter
 
-    def _inject_headers(
+    async def _inject_headers(
         self, response: Response, current_limit: Tuple[RateLimitItem, List[str]]
     ) -> Response:
         if self.enabled and self._headers_enabled and current_limit is not None:
@@ -360,8 +356,8 @@ class Limiter:
                     "parameter `response` must be an instance of starlette.responses.Response"
                 )
             try:
-                window_stats: Tuple[int, int] = self.limiter.get_window_stats(
-                    current_limit[0], *current_limit[1]
+                window_stats: Tuple[int, int] = await run_in_threadpool(
+                    self.limiter.get_window_stats, current_limit[0], *current_limit[1]
                 )
                 reset_in = 1 + window_stats[0]
                 response.headers.append(
@@ -402,7 +398,7 @@ class Limiter:
                         " in-memory storage"
                     )
                     self._storage_dead = True
-                    response = self._inject_headers(response, current_limit)
+                    response = await self._inject_headers(response, current_limit)
                 if self._swallow_errors:
                     self.logger.exception(
                         "Failed to update rate limit headers. Swallowing error"
@@ -411,7 +407,7 @@ class Limiter:
                     raise
         return response
 
-    def __evaluate_limits(
+    async def __evaluate_limits(
         self, request: Request, endpoint: str, limits: List[Limit]
     ) -> None:
         failed_limit = None
@@ -436,7 +432,8 @@ class Limiter:
                     args = [self._key_prefix] + args
                 if not limit_for_header or lim.limit < limit_for_header[0]:
                     limit_for_header = (lim.limit, args)
-                if not self.limiter.hit(lim.limit, *args):
+                hit = await run_in_threadpool(self.limiter.hit, lim.limit, *args)
+                if not hit:
                     self.logger.warning(
                         "ratelimit %s (%s) exceeded at endpoint: %s",
                         lim.limit,
@@ -457,7 +454,7 @@ class Limiter:
         if failed_limit:
             raise RateLimitExceeded(failed_limit)
 
-    def _check_request_limit(
+    async def _check_request_limit(
         self,
         request: Request,
         endpoint_func: Callable[..., Any],
@@ -504,10 +501,11 @@ class Limiter:
                 if in_middleware and name in self.__marked_for_limiting:
                     pass
                 else:
-                    if self.__should_check_backend() and self._storage.check():
-                        self.logger.info("Rate limit storage recovered")
-                        self._storage_dead = False
-                        self.__check_backend_count = 0
+                    if await self.__should_check_backend():
+                        if await run_in_threadpool(self._storage.check):
+                            self.logger.info("Rate limit storage recovered")
+                            self._storage_dead = False
+                            self.__check_backend_count = 0
                     else:
                         all_limits = list(itertools.chain(*self._in_memory_fallback))
             if not all_limits:
@@ -528,7 +526,7 @@ class Limiter:
                 ):
                     all_limits += list(itertools.chain(*self._default_limits))
             # actually check the limits, so far we've only computed the list of limits to check
-            self.__evaluate_limits(request, endpoint, all_limits)
+            await self.__evaluate_limits(request, endpoint, all_limits)
         except Exception as e:  # no qa
             if isinstance(e, RateLimitExceeded):
                 raise
@@ -538,7 +536,7 @@ class Limiter:
                     " in-memory storage"
                 )
                 self._storage_dead = True
-                self._check_request_limit(request, endpoint_func, in_middleware)
+                await self._check_request_limit(request, endpoint_func, in_middleware)
             else:
                 if self._swallow_errors:
                     self.logger.exception("Failed to rate limit. Swallowing error")
@@ -611,69 +609,42 @@ class Limiter:
                     f'No "request" or "websocket" argument on function "{func}"'
                 )
 
-            if asyncio.iscoroutinefunction(func):
-                # Handle async request/response functions.
-                @functools.wraps(func)
-                async def async_wrapper(*args: Any, **kwargs: Any) -> Response:
-                    # get the request object from the decorated endpoint function
-                    if self.enabled:
-                        request = kwargs.get("request", args[idx] if args else None)
-                        if not isinstance(request, Request):
-                            raise Exception(
-                                "parameter `request` must be an instance of starlette.requests.Request"
-                            )
+            @wraps(func)
+            async def wrapper(*args: Any, **kwargs: Any) -> Response:
+                # get the request object from the decorated endpoint function
+                if self.enabled:
+                    request = kwargs.get("request", args[idx] if args else None)
+                    if not isinstance(request, Request):
+                        raise Exception(
+                            "parameter `request` must be an instance of starlette.requests.Request"
+                        )
 
-                        if self._auto_check and not getattr(
-                            request.state, "_rate_limiting_complete", False
-                        ):
-                            self._check_request_limit(request, func, False)
-                            request.state._rate_limiting_complete = True
+                    if self._auto_check and not getattr(
+                        request.state, "_rate_limiting_complete", False
+                    ):
+                        await self._check_request_limit(request, func, False)
+                        request.state._rate_limiting_complete = True
+
+                if asyncio.iscoroutinefunction(func):
+                    # Handle async request/response functions.
                     response = await func(*args, **kwargs)  # type: ignore
-                    if self.enabled:
-                        if not isinstance(response, Response):
-                            # get the response object from the decorated endpoint function
-                            self._inject_headers(
-                                kwargs.get("response"), request.state.view_rate_limit  # type: ignore
-                            )
-                        else:
-                            self._inject_headers(
-                                response, request.state.view_rate_limit
-                            )
-                    return response
+                else:
+                    # Handle sync request/response functions by dispatching to a threadpool.
+                    response = await run_in_threadpool(func, *args, **kwargs)
 
-                return async_wrapper
+                if self.enabled:
+                    if not isinstance(response, Response):
+                        # get the response object from the decorated endpoint function
+                        await self._inject_headers(
+                            kwargs.get("response"), request.state.view_rate_limit  # type: ignore
+                        )
+                    else:
+                        await self._inject_headers(
+                            response, request.state.view_rate_limit
+                        )
+                return response
 
-            else:
-                # Handle sync request/response functions.
-                @functools.wraps(func)
-                def sync_wrapper(*args: Any, **kwargs: Any) -> Response:
-                    # get the request object from the decorated endpoint function
-                    if self.enabled:
-                        request = kwargs.get("request", args[idx] if args else None)
-                        if not isinstance(request, Request):
-                            raise Exception(
-                                "parameter `request` must be an instance of starlette.requests.Request"
-                            )
-
-                        if self._auto_check and not getattr(
-                            request.state, "_rate_limiting_complete", False
-                        ):
-                            self._check_request_limit(request, func, False)
-                            request.state._rate_limiting_complete = True
-                    response = func(*args, **kwargs)
-                    if self.enabled:
-                        if not isinstance(response, Response):
-                            # get the response object from the decorated endpoint function
-                            self._inject_headers(
-                                kwargs.get("response"), request.state.view_rate_limit  # type: ignore
-                            )
-                        else:
-                            self._inject_headers(
-                                response, request.state.view_rate_limit
-                            )
-                    return response
-
-                return sync_wrapper
+            return wrapper
 
         return decorator
 
