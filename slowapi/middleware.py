@@ -20,6 +20,9 @@ class SlowAPIMiddleware(BaseHTTPMiddleware):
         app: Starlette = request.app
         limiter: Limiter = app.state.limiter
         handler = None
+        if not limiter.enabled:
+            return await call_next(request)
+
         for route in app.routes:
             match, _ = route.matches(request.scope)
             if match == Match.FULL and hasattr(route, "endpoint"):
@@ -51,9 +54,8 @@ class SlowAPIMiddleware(BaseHTTPMiddleware):
                 return exception_handler(request, e)
             # request.state._rate_limiting_complete = True
             response = await call_next(request)
-            if limiter.enabled:
-                response = limiter._inject_headers(
-                    response, request.state.view_rate_limit
-                )
+            response = limiter._inject_headers(
+                response, request.state.view_rate_limit
+            )
             return response
         return await call_next(request)
