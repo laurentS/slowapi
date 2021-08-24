@@ -378,7 +378,10 @@ class Limiter:
                 existing_retry_after_header = response.headers.get("Retry-After")
 
                 if existing_retry_after_header is not None:
-                    reset_in = max(self._determine_retry_time(existing_retry_after_header), reset_in)
+                    reset_in = max(
+                        self._determine_retry_time(existing_retry_after_header),
+                        reset_in,
+                    )
 
                 response.headers[self._header_mapping[HEADERS.RETRY_AFTER]] = (
                     formatdate(reset_in)
@@ -449,7 +452,9 @@ class Limiter:
 
     def _determine_retry_time(self, retry_header_value) -> int:
         try:
-            retry_after_date: Optional[datetime] = parsedate_to_datetime(retry_header_value)
+            retry_after_date: Optional[datetime] = parsedate_to_datetime(
+                retry_header_value
+            )
         except TypeError:
             retry_after_date = None
 
@@ -459,14 +464,16 @@ class Limiter:
         try:
             retry_after_int: int = int(retry_header_value)
         except TypeError:
-            raise ValueError("Retry-After Header does not meet RFC2616 - value is not of http-date or int type.")
+            raise ValueError(
+                "Retry-After Header does not meet RFC2616 - value is not of http-date or int type."
+            )
 
         return int(time.time() + retry_after_int)
 
     def _check_request_limit(
-            self,
-            request: Request,
-            endpoint_func: Callable[..., Any],
+        self,
+        request: Request,
+        endpoint_func: Callable[..., Any],
         in_middleware: bool = True,
     ) -> None:
         """

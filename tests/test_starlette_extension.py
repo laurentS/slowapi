@@ -87,8 +87,8 @@ class TestDecorators(TestSlowapi):
 
             assert cli.get("/t1").status_code == 429
             assert (
-                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
-                    == 429
+                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                == 429
             )
 
     def test_multiple_decorators_with_headers(self):
@@ -114,8 +114,8 @@ class TestDecorators(TestSlowapi):
 
             assert cli.get("/t1").status_code == 429
             assert (
-                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
-                    == 429
+                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                == 429
             )
 
     def test_headers_no_breach(self):
@@ -245,6 +245,6 @@ class TestDecorators(TestSlowapi):
 
             assert cli.get("/t1").status_code == 429
             assert (
-                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
-                    == 429
+                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                == 429
             )

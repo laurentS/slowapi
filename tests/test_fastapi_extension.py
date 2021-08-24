@@ -90,8 +90,8 @@ class TestDecorators(TestSlowapi):
 
             assert cli.get("/t1").status_code == 429
             assert (
-                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
-                    == 429
+                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                == 429
             )
 
     def test_multiple_decorators_not_response(self):
@@ -115,8 +115,8 @@ class TestDecorators(TestSlowapi):
 
             assert cli.get("/t1").status_code == 429
             assert (
-                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
-                    == 429
+                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                == 429
             )
 
     def test_multiple_decorators_not_response_with_headers(self):
@@ -140,14 +140,15 @@ class TestDecorators(TestSlowapi):
 
             assert cli.get("/t1").status_code == 429
             assert (
-                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
-                    == 429
+                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                == 429
             )
 
     def test_endpoint_missing_request_param(self):
         app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
 
         with pytest.raises(Exception) as exc_info:
+
             @app.get("/t3")
             @limiter.limit("5/minute")
             async def t3():
@@ -161,6 +162,7 @@ class TestDecorators(TestSlowapi):
         app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
 
         with pytest.raises(Exception) as exc_info:
+
             @app.get("/t3_sync")
             @limiter.limit("5/minute")
             def t3():
