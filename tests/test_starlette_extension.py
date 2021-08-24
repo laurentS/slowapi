@@ -87,8 +87,35 @@ class TestDecorators(TestSlowapi):
 
             assert cli.get("/t1").status_code == 429
             assert (
-                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
-                == 429
+                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                    == 429
+            )
+
+    def test_multiple_decorators_with_headers(self):
+        app, limiter = self.build_starlette_app(
+            key_func=get_ipaddr, headers_enabled=True
+        )
+
+        @limiter.limit("10 per minute", lambda: "test")
+        @limiter.limit("5/minute")  # per ip as per default key_func
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+
+        with hiro.Timeline().freeze() as timeline:
+            cli = TestClient(app)
+            for i in range(0, 10):
+                response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
+                assert response.status_code == 200 if i < 5 else 429
+                assert response.headers.get("Retry-After") if i < 5 else True
+            for i in range(5):
+                assert cli.get("/t1").status_code == 200
+
+            assert cli.get("/t1").status_code == 429
+            assert (
+                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                    == 429
             )
 
     def test_headers_no_breach(self):
@@ -140,7 +167,6 @@ class TestDecorators(TestSlowapi):
                     resp = cli.get("/t1")
                     timeline.forward(1)
 
-                print(resp.headers)
                 assert resp.headers.get("X-RateLimit-Limit") == "10"
                 assert resp.headers.get("X-RateLimit-Remaining") == "0"
                 assert resp.headers.get("X-RateLimit-Reset") == str(
@@ -219,6 +245,6 @@ class TestDecorators(TestSlowapi):
 
             assert cli.get("/t1").status_code == 429
             assert (
-                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
-                == 429
+                    cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                    == 429
             )
