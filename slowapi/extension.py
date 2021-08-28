@@ -2,7 +2,7 @@
 The starlette extension to rate-limit requests
 """
 import asyncio
-import datetime
+from datetime import datetime, timedelta
 import functools
 import inspect
 import itertools
@@ -378,17 +378,10 @@ class Limiter:
                 existing_retry_after_header = response.headers.get("Retry-After")
 
                 if existing_retry_after_header is not None:
-                    # might be in http-date format
-                    retry_after = parsedate_to_datetime(existing_retry_after_header)
-
-                    # parse_date failure returns None
-                    if retry_after is None:
-                        retry_after = time.time() + int(existing_retry_after_header)
-
-                    if isinstance(retry_after, datetime.datetime):
-                        retry_after_int: int = int(time.mktime(retry_after.timetuple()))
-
-                    reset_in = max(retry_after_int, reset_in)
+                    reset_in = max(
+                        self._determine_retry_time(existing_retry_after_header),
+                        reset_in,
+                    )
 
                 response.headers[self._header_mapping[HEADERS.RETRY_AFTER]] = (
                     formatdate(reset_in)
@@ -397,7 +390,7 @@ class Limiter:
                 )
             except:
                 if self._in_memory_fallback and not self._storage_dead:
-                    self.logger.warn(
+                    self.logger.warning(
                         "Rate limit storage unreachable - falling back to"
                         " in-memory storage"
                     )
@@ -456,6 +449,26 @@ class Limiter:
 
         if failed_limit:
             raise RateLimitExceeded(failed_limit)
+
+    def _determine_retry_time(self, retry_header_value) -> int:
+        try:
+            retry_after_date: Optional[datetime] = parsedate_to_datetime(
+                retry_header_value
+            )
+        except TypeError:
+            retry_after_date = None
+
+        if retry_after_date is not None:
+            return int(time.mktime(retry_after_date.timetuple()))
+
+        try:
+            retry_after_int: int = int(retry_header_value)
+        except TypeError:
+            raise ValueError(
+                "Retry-After Header does not meet RFC2616 - value is not of http-date or int type."
+            )
+
+        return int(time.time() + retry_after_int)
 
     def _check_request_limit(
         self,
