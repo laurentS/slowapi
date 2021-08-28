@@ -27,10 +27,10 @@ jobs:
       # it's not clear why this is needed only for this version of python
       run: sudo apt-get install libxml2-dev libxslt-dev
     - name: Install Poetry
-      uses: snok/install-poetry@v1.1.8
+      uses: snok/install-poetry@v1
       with:
         # Version of Poetry to use
-        version: 1.1.4
+        version: 1.1.8
     - name: Install dependencies
       run: |
         poetry install
