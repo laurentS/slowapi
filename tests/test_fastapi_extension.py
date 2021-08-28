@@ -223,6 +223,10 @@ class TestDecorators(TestSlowapi):
         def t2(request: Request):
             return PlainTextResponse("test")
 
+        @app.get("/t3")
+        def t3(request: Request):
+            return PlainTextResponse("also a test")
+
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
@@ -230,4 +234,8 @@ class TestDecorators(TestSlowapi):
 
         for i in range(0, 10):
             response = client.get("/t2")
+            assert response.status_code == 200
+
+        for i in range(0, 10):
+            response = client.get("/t3")
             assert response.status_code == 200
