@@ -1,5 +1,19 @@
 # Change Log
 
+## [0.1.5] - 2021-08-28
+
+### Changed
+
+- Switched to poetry-core for building #54 (thanks @fabaff)
+- Improved the docs
+- Upgraded a few dependencies (thanks @dependabot)
+
+### Fixed
+
+- Resolved bug of unregistered endpoints in the disabled state #46 (thanks @twcurrie)
+- Fixed bug with Retry-After headers #60 (thanks again @twcurrie)
+
+
 ## [0.1.4] - 2021-02-21
 
 - Made the enabled option actually useful (thanks @kodekracker for the report) #35

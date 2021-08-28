@@ -157,6 +157,17 @@ To run the tests:
 $ pytest
 ```
 
+## Releasing a new version
+
+`slowapi` tries to follow [semantic versioning](https://semver.org/).
+
+To release a new version:
+
+- Update CHANGELOG.md
+- Bump the version number is `pyproject.toml`
+- `poetry build`
+- `poetry publish`
+
 # Credits
 
 Credits go to [flask-limiter](https://github.com/alisaifee/flask-limiter) of which SlowApi is a (still partial) adaptation to Starlette and FastAPI.
