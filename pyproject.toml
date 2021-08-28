@@ -20,7 +20,7 @@ redis = "^3.4.1"
 
 [tool.poetry.dev-dependencies]
 isort = "^4.3.21"
-mypy = "^0.761"
+mypy = "^0.910"
 black = "^19.10b0"
 fastapi = "^0.61.0"
 lxml = "^4.5.0"
