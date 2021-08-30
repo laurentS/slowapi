@@ -573,7 +573,7 @@ class Limiter:
 
         _scope = scope if shared else None
 
-        def decorator(func: Callable[..., Response]) -> Callable[..., Response]:
+        def decorator(func: Callable[..., Response]):
             keyfunc = key_func or self._key_func
             name = f"{func.__module__}.{func.__name__}"
             dynamic_limit = None
