@@ -18,7 +18,7 @@ $ pip install slowapi
 
 # Features
 
-Most feature are coming from (will come from) FlaskLimiter and the underlying [limits](https://limits.readthedocs.io/).
+Most feature are coming from FlaskLimiter and the underlying [limits](https://limits.readthedocs.io/).
 
 Supported now:
 
