@@ -35,6 +35,20 @@ The tests show a lot of different use cases that are not all covered here.
         return PlainTextResponse("I'm unlimited")
 ```
 
+## Dynamically change the rate limit
+
+```python
+    def dynamic_limit():
+        # do anything you want here
+        return "1/minute"
+
+    @app.route("/homepage")
+    @limiter.limit(dynamic_limit)
+    async def homepage(request: Request):
+        return PlainTextResponse("test")
+```
+
+
 ## Disable the limiter entirely
 
 You might want to disable the limiter, for instance for testing, etc...

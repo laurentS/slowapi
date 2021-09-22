@@ -264,3 +264,53 @@ class TestDecorators(TestSlowapi):
         for i in range(0, 10):
             response = client.get("/t3")
             assert response.status_code == 200
+
+    def test_rate_limit_at_app_level(self):
+        app, limiter = self.build_fastapi_app(key_func=get_ipaddr, application_limits=["5/minute"])
+
+        @app.get("/t1")
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1")
+            assert response.status_code == 200 if i < 5 else 429
+
+    def test_dynamic_rate_limit(self):
+
+        RATE_LIMIT = "5/minute"
+
+        def get_rate_limit() -> str:
+            return RATE_LIMIT
+
+        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+
+        @app.get("/t1")
+        @limiter.limit(get_rate_limit)
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1")
+            assert response.status_code == 200 if i < 5 else 429
+
+        RATE_LIMIT = "10/minute"
+        for i in range(0, 20):
+            response = client.get("/t1")
+            assert response.status_code == 200 if i < 10 else 429
+
+    def test_single_decorator_for_exempt(self):
+        app, limiter = self.build_fastapi_app(key_func=get_ipaddr, application_limits=["10/minute"])
+
+        @app.get("/t1")
+        @limiter.limit('exempt')
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        client = TestClient(app)
+
+        for i in range(0, 10):
+            response = client.get("/t1")
+            assert response.status_code == 200
