@@ -771,9 +771,19 @@ class Limiter:
         """
         name = "%s.%s" % (obj.__module__, obj.__name__)
 
-        @wraps(obj)
-        def __inner(*a, **k):
-            return obj(*a, **k)
-
         self._exempt_routes.add(name)
-        return __inner
+
+        if asyncio.iscoroutinefunction(obj):
+
+            @wraps(obj)
+            async def __async_inner(*a, **k):
+                return await obj(*a, **k)
+
+            return __async_inner
+        else:
+
+            @wraps(obj)
+            def __inner(*a, **k):
+                return obj(*a, **k)
+
+            return __inner
