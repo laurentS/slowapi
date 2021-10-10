@@ -203,7 +203,7 @@ class TestDecorators(TestSlowapi):
         )
 
         @app.route("/t1")
-        def t(request: Request):
+        def t1(request: Request):
             return PlainTextResponse("test")
 
         with TestClient(app) as cli:
@@ -214,13 +214,26 @@ class TestDecorators(TestSlowapi):
 
         @app.route("/t2")
         @limiter.exempt
-        def t(request: Request):
+        def t2(request: Request):
+            """Exempt a sync route"""
             return PlainTextResponse("test")
 
         with TestClient(app) as cli:
             resp = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.10"})
             assert resp.status_code == 200
             resp2 = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.10"})
+            assert resp2.status_code == 200
+
+        @app.route("/t3")
+        @limiter.exempt
+        async def t3(request: Request):
+            """Exempt an async route"""
+            return PlainTextResponse("test")
+
+        with TestClient(app) as cli:
+            resp = cli.get("/t3", headers={"X_FORWARDED_FOR": "127.0.0.10"})
+            assert resp.status_code == 200
+            resp2 = cli.get("/t3", headers={"X_FORWARDED_FOR": "127.0.0.10"})
             assert resp2.status_code == 200
 
     # todo: more tests - see https://github.com/alisaifee/flask-limiter/blob/55df08f14143a7e918fc033067a494248ab6b0c5/tests/test_decorators.py#L187
