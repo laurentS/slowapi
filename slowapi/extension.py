@@ -774,12 +774,16 @@ class Limiter:
         self._exempt_routes.add(name)
 
         if asyncio.iscoroutinefunction(obj):
+
             @wraps(obj)
             async def __async_inner(*a, **k):
                 return await obj(*a, **k)
+
             return __async_inner
         else:
+
             @wraps(obj)
             def __inner(*a, **k):
                 return obj(*a, **k)
+
             return __inner
