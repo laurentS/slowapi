@@ -311,6 +311,6 @@ class TestDecorators(TestSlowapi):
 
         client = TestClient(app)
 
-        for i in range(0, 10):
+        for i in range(0, 20):
             response = client.get("/t1")
             assert response.status_code == 200
