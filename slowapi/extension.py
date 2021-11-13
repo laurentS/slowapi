@@ -455,7 +455,7 @@ class Limiter:
             retry_after_date: Optional[datetime] = parsedate_to_datetime(
                 retry_header_value
             )
-        except TypeError:
+        except (TypeError, ValueError):
             retry_after_date = None
 
         if retry_after_date is not None:
