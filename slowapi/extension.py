@@ -605,7 +605,9 @@ class Limiter:
                     )
                 except ValueError as e:
                     self.logger.error(
-                        "Failed to configure throttling for %s (%s)", name, e,
+                        "Failed to configure throttling for %s (%s)",
+                        name,
+                        e,
                     )
             self.__marked_for_limiting.setdefault(name, []).append(func)
             if dynamic_limit:
