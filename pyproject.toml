@@ -14,14 +14,14 @@ documentation = "https://slowapi.readthedocs.io/en/latest/"
 include = ["slowapi/py.typed"]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = ">=3.6.2,<4.0"
 limits = "^1.5"
 redis = "^3.4.1"
 
 [tool.poetry.dev-dependencies]
 isort = "^4.3.21"
 mypy = "^0.910"
-black = "^19.10b0"
+black = "21.10b0"
 fastapi = "^0.61.0"
 lxml = "^4.5.0"
 starlette = "^0.13.6"
