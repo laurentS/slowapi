@@ -30,7 +30,7 @@ jobs:
       uses: snok/install-poetry@v1
       with:
         # Version of Poetry to use
-        version: 1.1.8
+        version: 1.1.11
     - name: Install dependencies
       run: |
         poetry install
