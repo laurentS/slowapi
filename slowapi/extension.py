@@ -217,6 +217,7 @@ class Limiter:
         self.__check_backend_count = 0
         self.__last_check_backend = time.time()
         self.__marked_for_limiting: Dict[str, List[Callable]] = {}
+        self.__limited_method_hashes: List[int] = []
 
         class BlackHoleHandler(logging.StreamHandler):
             def emit(*_):
@@ -576,6 +577,13 @@ class Limiter:
         def decorator(func: Callable[..., Response]):
             keyfunc = key_func or self._key_func
             name = f"{func.__module__}.{func.__name__}"
+
+            if (
+                name in self.__marked_for_limiting
+                and hash(func) not in self.__limited_method_hashes
+            ):
+                raise ValueError(f"Duplicate method name marked for limiting: {name}")
+
             dynamic_limit = None
             static_limits: List[Limit] = []
             if callable(limit_value):
@@ -656,6 +664,8 @@ class Limiter:
                             )
                     return response
 
+                self.__limited_method_hashes.append(hash(async_wrapper))
+
                 return async_wrapper
 
             else:
@@ -687,6 +697,8 @@ class Limiter:
                                 response, request.state.view_rate_limit
                             )
                     return response
+
+                self.__limited_method_hashes.append(hash(sync_wrapper))
 
                 return sync_wrapper
 

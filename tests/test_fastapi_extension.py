@@ -264,3 +264,18 @@ class TestDecorators(TestSlowapi):
         for i in range(0, 10):
             response = client.get("/t3")
             assert response.status_code == 200
+
+    def test_duplicate_method_names(self):
+        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+
+        @limiter.limit("5 per minute")
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        with pytest.raises(ValueError) as exc_info:
+
+            @limiter.limit("5 per minute")
+            async def t1(request: Request):
+                return PlainTextResponse("test")
+
+        assert exc_info.match(r"""^Duplicate method name marked for limiting: .*$""")
