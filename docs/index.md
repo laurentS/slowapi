@@ -54,12 +54,12 @@ The above app will have a route `t1` that will accept up to 5 requests per minut
     # Note: the route decorator must be above the limit decorator, not below it
     @app.get("/home")
     @limiter.limit("5/minute")
-    async def homepage(request: Request):
+    async def home(request: Request):
         return Response("test")
 
     @app.get("/mars")
     @limiter.limit("5/minute")
-    async def homepage(request: Request, response: Response):
+    async def mars(request: Request, response: Response):
         return {"key": "value"}
 ```
 
