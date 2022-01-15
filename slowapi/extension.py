@@ -503,7 +503,7 @@ class Limiter:
             if name in self._dynamic_route_limits:
                 for lim in self._dynamic_route_limits[name]:
                     try:
-                        dynamic_limits.extend(list(lim))
+                        dynamic_limits.extend(list(lim.with_request(request)))
                     except ValueError as e:
                         self.logger.error(
                             "failed to load ratelimit for view function %s (%s)",
