@@ -232,6 +232,33 @@ class TestDecorators(TestSlowapi):
             r"""parameter `response` must be an instance of starlette.responses.Response"""
         )
 
+    def test_dynamic_limit_provider_depending_on_key(self):
+        def custom_key_func(request: Request):
+            if request.headers.get("TOKEN") == "secret":
+                return "admin"
+            return "user"
+
+        def dynamic_limit_provider(key: str):
+            if key == "admin":
+                return "10/minute"
+            return "5/minute"
+
+        app, limiter = self.build_fastapi_app(key_func=custom_key_func)
+
+        @app.get("/t1")
+        @limiter.limit(dynamic_limit_provider)
+        async def t1(request: Request, response: Response):
+            return {"key": "value"}
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1")
+            assert response.status_code == 200 if i < 5 else 429
+
+        for i in range(0, 20):
+            response = client.get("/t1", headers={"TOKEN": "secret"})
+            assert response.status_code == 200 if i < 10 else 429
+
     def test_disabled_limiter(self):
         """
         Check that the limiter does nothing if disabled (both sync and async)
