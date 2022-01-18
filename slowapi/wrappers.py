@@ -82,8 +82,9 @@ class LimitGroup(object):
             if "key" in inspect.signature(self.__limit_provider).parameters.keys():
                 assert (
                     "request" in inspect.signature(self.key_function).parameters.keys()
-                )
-                assert self.request
+                ), "If limit provider function depends on `key` argument, key function must accept `request`"
+                if self.request is None:
+                    raise Exception("`request` object can't be None")
                 limit_raw = self.__limit_provider(self.key_function(self.request))
             else:
                 limit_raw = self.__limit_provider()
