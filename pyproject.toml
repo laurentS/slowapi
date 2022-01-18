@@ -29,7 +29,7 @@ mock = "^4.0.1"
 hiro = "^0.5.1"
 requests = "^2.22.0"
 pytest = "~=6.2.5"
-mkdocs = "^1.1.2"
+mkdocs = "^1.2.3"
 mkautodoc = "^0.1.0"
 types-redis = "^3.5.6"
 
