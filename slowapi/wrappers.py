@@ -1,3 +1,4 @@
+import inspect
 from typing import Callable, Iterator, List, Optional, Union
 
 from limits import RateLimitItem, parse_many  # type: ignore
@@ -74,13 +75,22 @@ class LimitGroup(object):
         self.error_message = error_message
         self.exempt_when = exempt_when
         self.override_defaults = override_defaults
+        self.request = None
 
     def __iter__(self) -> Iterator[Limit]:
-        limit_items: List[RateLimitItem] = parse_many(
-            self.__limit_provider()
-            if callable(self.__limit_provider)
-            else self.__limit_provider
-        )
+        if callable(self.__limit_provider):
+            if "key" in inspect.signature(self.__limit_provider).parameters.keys():
+                assert (
+                    "request" in inspect.signature(self.key_function).parameters.keys()
+                ), f"Limit provider function {self.key_function.__name__} needs a `request` argument"
+                if self.request is None:
+                    raise Exception("`request` object can't be None")
+                limit_raw = self.__limit_provider(self.key_function(self.request))
+            else:
+                limit_raw = self.__limit_provider()
+        else:
+            limit_raw = self.__limit_provider
+        limit_items: List[RateLimitItem] = parse_many(limit_raw)
         for limit in limit_items:
             yield Limit(
                 limit,
@@ -92,3 +102,7 @@ class LimitGroup(object):
                 self.exempt_when,
                 self.override_defaults,
             )
+
+    def with_request(self, request):
+        self.request = request
+        return self
