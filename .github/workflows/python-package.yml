@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.6', '3.7', '3.8', '3.9', '3.10']
+        python-version: ['3.7', '3.8', '3.9', '3.10']
 
     steps:
     - uses: actions/checkout@v2
@@ -41,5 +41,9 @@ jobs:
       run: |
         poetry run mypy .
     - name: Test with pytest
+      # Wrapped by coverage to generate coverage data
       run: |
-        poetry run pytest
+        poetry run coverage run --omit="tests*" -m pytest
+    - name: Generate coverage report
+      run: |
+        poetry run coverage report

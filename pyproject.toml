@@ -14,7 +14,7 @@ documentation = "https://slowapi.readthedocs.io/en/latest/"
 include = ["slowapi/py.typed"]
 
 [tool.poetry.dependencies]
-python = ">=3.6.2,<4.0"
+python = ">=3.7,<4.0"
 limits = "^1.5"
 redis = "^3.4.1"
 
@@ -32,6 +32,7 @@ pytest = "~=6.2.5"
 mkdocs = "^1.2.3"
 mkautodoc = "^0.1.0"
 types-redis = "^3.5.6"
+coverage = "^6.3"
 
 [tool.black]
 line-length = 88
