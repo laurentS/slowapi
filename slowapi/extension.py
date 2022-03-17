@@ -22,11 +22,11 @@ from typing import (
     Union,
 )
 
-from limits import RateLimitItem  # type: ignore
-from limits.errors import ConfigurationError  # type: ignore
-from limits.storage import Storage  # type: ignore
+from limits import RateLimitItem
+from limits.errors import ConfigurationError
+from limits.storage import Storage
 from limits.storage import MemoryStorage, storage_from_string
-from limits.strategies import STRATEGIES, RateLimiter  # type: ignore
+from limits.strategies import STRATEGIES, RateLimiter
 from starlette.config import Config
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
