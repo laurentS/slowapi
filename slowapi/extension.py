@@ -37,6 +37,7 @@ from starlette.config import Config
 from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.websockets import WebSocket
 from starlette.responses import JSONResponse, Response
 
 from .errors import RateLimitExceeded
@@ -618,8 +619,11 @@ class Limiter:
             connection_type: Optional[str] = None
             sig = inspect.signature(func)
             for idx, parameter in enumerate(sig.parameters.values()):
-                if parameter.name == "request" or parameter.name == "websocket":
-                    connection_type = parameter.name
+                if parameter.annotation is Request:
+                    connection_type = "request"
+                    break
+                if parameter.annotation is WebSocket:
+                    connection_type = "websocket"
                     break
             else:
                 raise Exception(
