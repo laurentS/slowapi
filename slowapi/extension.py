@@ -417,8 +417,9 @@ class Limiter:
                 continue
             if lim.per_method:
                 limit_scope += ":%s" % request.method
-
-            if "request" in inspect.signature(lim.key_func).parameters.keys():
+                
+            sig = inspect.signature(lim.key_func)
+            if "request" in sig.parameters.keys():
                 limit_key = lim.key_func(request)
             else:
                 limit_key = lim.key_func()
@@ -621,6 +622,13 @@ class Limiter:
                 if parameter.name == "request" or parameter.name == "websocket":
                     connection_type = parameter.name
                     break
+                if parameter.name == "_":
+                    if parameter.annotation is Request:
+                        connection_type = "request"
+                        break
+                    if parameter.annotation is WebSocket:
+                        connection_type = "websocket"
+                        break
             else:
                 raise Exception(
                     f'No "request" or "websocket" argument on function "{func}"'
@@ -632,7 +640,7 @@ class Limiter:
                 async def async_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
                     if self.enabled:
-                        request = kwargs.get("request", args[idx] if args else None)
+                        request = kwargs.get("request", kwargs.get("_", args[idx] if args else None))
                         if not isinstance(request, Request):
                             raise Exception(
                                 "parameter `request` must be an instance of starlette.requests.Request"
@@ -664,7 +672,7 @@ class Limiter:
                 def sync_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
                     if self.enabled:
-                        request = kwargs.get("request", args[idx] if args else None)
+                        request = kwargs.get("request", kwargs.get("_", args[idx] if args else None))
                         if not isinstance(request, Request):
                             raise Exception(
                                 "parameter `request` must be an instance of starlette.requests.Request"
