@@ -42,7 +42,7 @@ jobs:
         poetry run mypy .
     - name: Verify unused imports
       run: |
-        poetry run flake8 --select F401 slowapi
+        poetry run flake8 --select F401
     - name: Test with pytest
       # Wrapped by coverage to generate coverage data
       run: |
