@@ -40,6 +40,9 @@ jobs:
     - name: Check typing annotations with mypy
       run: |
         poetry run mypy .
+    - name: Verify unused imports
+      run: |
+        poetry run flake8 --select F401 slowapi
     - name: Test with pytest
       # Wrapped by coverage to generate coverage data
       run: |
