@@ -16,7 +16,6 @@ include = ["slowapi/py.typed"]
 [tool.poetry.dependencies]
 python = ">=3.7,<4.0"
 limits = "^1.5"
-redis = "^3.4.1"
 
 [tool.poetry.dev-dependencies]
 isort = "^4.3.21"
@@ -48,3 +47,6 @@ line_length = 88
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.extras]
+redis = ["redis^3.4.1"]
