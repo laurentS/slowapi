@@ -2,45 +2,36 @@
 The starlette extension to rate-limit requests
 """
 import asyncio
-from datetime import datetime, timedelta
 import functools
 import inspect
 import itertools
-import json
 import logging
-import sys
 import time
-import warnings
+from datetime import datetime
 from email.utils import formatdate, parsedate_to_datetime
 from functools import wraps
 from typing import (
     Any,
-    Awaitable,
     Callable,
     Dict,
     List,
     Optional,
     Set,
     Tuple,
-    Type,
     TypeVar,
     Union,
 )
 
 from limits import RateLimitItem  # type: ignore
 from limits.errors import ConfigurationError  # type: ignore
-from limits.storage import Storage  # type: ignore
 from limits.storage import MemoryStorage, storage_from_string
+from limits.storage import Storage  # type: ignore
 from limits.strategies import STRATEGIES, RateLimiter  # type: ignore
-from starlette.applications import Starlette
 from starlette.config import Config
-from starlette.exceptions import HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from .errors import RateLimitExceeded
-from .util import get_ipaddr
 from .wrappers import Limit, LimitGroup
 
 # used to annotate get_app_config method

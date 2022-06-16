@@ -1,10 +1,8 @@
 import time
 
 import hiro  # type: ignore
-from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
-from starlette.routing import Route
 from starlette.testclient import TestClient
 
 from slowapi.util import get_ipaddr, get_remote_address
