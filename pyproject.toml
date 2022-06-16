@@ -20,7 +20,7 @@ limits = "^1.5"
 [tool.poetry.dev-dependencies]
 isort = "^4.3.21"
 mypy = "^0.910"
-black = "21.10b0"
+black = "^22.3.0"
 fastapi = "^0.61.0"
 lxml = "^4.6.5"
 starlette = "^0.13.6"
