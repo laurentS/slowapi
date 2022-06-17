@@ -1,14 +1,11 @@
-from typing import Union
-
 from starlette.applications import Starlette
 from starlette.middleware.base import (
     BaseHTTPMiddleware,
     RequestResponseEndpoint,
-    DispatchFunction,
 )
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.routing import Route, BaseRoute, WebSocketRoute, Match
+from starlette.routing import Match
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 

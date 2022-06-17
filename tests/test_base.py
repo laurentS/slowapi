@@ -1,2 +1,2 @@
 def test_import():
-    import slowapi
+    import slowapi  # noqa: F401
