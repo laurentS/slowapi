@@ -1,5 +1,23 @@
 # Change Log
 
+## [0.1.6] - 2022-08-20
+
+### Added
+- Added feature to support providing functions for dynamically defined limits (thanks @maratsarbasov)
+- Added github action to check for unused imports (thanks @twcurrie)
+- Added coverage report in CI (thanks @karlnewell)
+- Added Python 3.10 to CI (thanks @Reuben Thomas-Davis)
+
+### Changed
+- Shifted redis to extras, removed test imports of library (thanks @ME-ON1)
+- Upgraded dependencies (thanks @dependabot, @Rested, @laurents)
+- Updated documentation and example code (thanks @Dustyposa, @laurents, @nootr)
+- Set minimum Python version to 3.6.2 (thanks @Rested)
+
+### Fixed
+- Fixed exempt decorator for async routes (thanks @laurents)
+- Handled newly raised exception from parsing library (thanks @Rested)
+
 ## [0.1.5] - 2021-08-28
 
 ### Changed
