@@ -10,7 +10,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  build-and-publish:
 
     runs-on: ubuntu-latest
     strategy:
@@ -18,9 +18,9 @@ jobs:
         python-version: ['3.7', '3.8', '3.9', '3.10']
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@master
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install build dependencies for requests in python 3.9
@@ -30,7 +30,7 @@ jobs:
       uses: snok/install-poetry@v1
       with:
         # Version of Poetry to use
-        version: 1.1.11
+        version: 1.1.15
     - name: Install dependencies
       run: |
         poetry install
@@ -50,3 +50,15 @@ jobs:
     - name: Generate coverage report
       run: |
         poetry run coverage report
+
+    - name: Build distribution tarball and wheel
+      # TODO: restrict this to master branch only
+      if: startsWith(github.ref, 'refs/tags')
+      run: |
+        poetry build
+
+    - name: Publish release to PyPI
+      if: startsWith(github.ref, 'refs/tags')
+      # uses POETRY_REPOSITORIES_TESTPYPI, POETRY_PYPI_TOKEN_TESTPYPI env vars
+      run: |
+        poetry publish --repository testpypi
