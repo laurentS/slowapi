@@ -259,3 +259,35 @@ class TestDecorators(TestSlowapi):
                 cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
                 == 429
             )
+
+    def test_cost(self):
+        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+
+        @limiter.limit("50/minute", cost=10)
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1")
+            assert response.status_code == 200 if i < 5 else 429
+            if i < 5:
+                assert response.text == "test"
+
+    def test_callable_cost(self):
+        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+
+        @limiter.limit("50/minute", cost=lambda request: int(request.headers["foo"]))
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1", headers={"foo": "10"})
+            assert response.status_code == 200 if i < 5 else 429
+            if i < 5:
+                assert response.text == "test"
