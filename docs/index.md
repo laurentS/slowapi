@@ -72,10 +72,11 @@ Most feature are coming from (will come from) FlaskLimiter and the underlying [l
 Supported now:
 
 - Single and multiple `limit` decorator on endpoint functions to apply limits
-- redis, memcached and memory backends to track your limits (memory as a fallback)
-- support for sync and async HTTP endpoints
+- Redis, memcached and memory backends to track your limits (memory as a fallback)
+- Support for sync and async HTTP endpoints
 - Support for shared limits across a set of routes
 - Support for default global limit
+- Support for a custom cost per hit
 
 # Limitations and known issues
 
