@@ -291,3 +291,47 @@ class TestDecorators(TestSlowapi):
         for i in range(0, 10):
             response = client.get("/t3")
             assert response.status_code == 200
+
+    def test_cost(self):
+        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+
+        @app.get("/t1")
+        @limiter.limit("50/minute", cost=10)
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        @app.get("/t2")
+        @limiter.limit("50/minute", cost=15)
+        async def t2(request: Request):
+            return PlainTextResponse("test")
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1")
+            assert response.status_code == 200 if i < 5 else 429
+
+            response = client.get("/t2")
+            assert response.status_code == 200 if i < 3 else 429
+
+    def test_callable_cost(self):
+        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+
+        @app.get("/t1")
+        @limiter.limit("50/minute", cost=lambda request: int(request.headers["foo"]))
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        @app.get("/t2")
+        @limiter.limit(
+            "50/minute", cost=lambda request: int(request.headers["foo"]) * 1.5
+        )
+        async def t2(request: Request):
+            return PlainTextResponse("test")
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1", headers={"foo": "10"})
+            assert response.status_code == 200 if i < 5 else 429
+
+            response = client.get("/t2", headers={"foo": "5"})
+            assert response.status_code == 200 if i < 6 else 429

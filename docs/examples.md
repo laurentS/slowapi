@@ -65,3 +65,19 @@ limiter = Limiter(key_func=get_remote_address, storage_uri="redis://<host>:<port
 where the /n in the redis url is the database number. To use the default one, just drop the /n from the url.
 
 There are more examples in the [limits docs](https://limits.readthedocs.io/en/stable/storage.html) which is the library slowapi uses to manage storage.
+
+## Set a custom cost per hit
+
+Setting a custom cost per hit is useful to throttle requests based on something else than the request count.
+
+Define a function which takes a request as parameter and returns a cost and pass it to the `limit` decorator:
+
+```python
+    def get_hit_cost(request: Request) -> int:
+        return len(request)
+
+    @app.route("/someroute")
+    @limiter.limit("100/minute", cost=get_hit_cost)
+    def t(request: Request):
+        return PlainTextResponse("I'm limited by the request size")
+```

@@ -18,6 +18,7 @@ class Limit(object):
         methods: Optional[List[str]],
         error_message: Optional[Union[str, Callable[..., str]]],
         exempt_when: Optional[Callable[..., bool]],
+        cost: Union[int, Callable[..., int]],
         override_defaults: bool,
     ) -> None:
         self.limit = limit
@@ -27,6 +28,7 @@ class Limit(object):
         self.methods = methods
         self.error_message = error_message
         self.exempt_when = exempt_when
+        self.cost = cost
         self.override_defaults = override_defaults
 
     @property
@@ -65,6 +67,7 @@ class LimitGroup(object):
         methods: Optional[List[str]],
         error_message: Optional[Union[str, Callable[..., str]]],
         exempt_when: Optional[Callable[..., bool]],
+        cost: Union[int, Callable[..., int]],
         override_defaults: bool,
     ):
         self.__limit_provider = limit_provider
@@ -74,6 +77,7 @@ class LimitGroup(object):
         self.methods = methods and [m.lower() for m in methods] or methods
         self.error_message = error_message
         self.exempt_when = exempt_when
+        self.cost = cost
         self.override_defaults = override_defaults
         self.request = None
 
@@ -100,6 +104,7 @@ class LimitGroup(object):
                 self.methods,
                 self.error_message,
                 self.exempt_when,
+                self.cost,
                 self.override_defaults,
             )
 

@@ -23,6 +23,7 @@ from typing import (
 )
 
 from limits import RateLimitItem  # type: ignore
+from limits.aio.storage import Storage as AsyncStorage  # type: ignore
 from limits.errors import ConfigurationError  # type: ignore
 from limits.storage import MemoryStorage, storage_from_string  # type: ignore
 from limits.storage import Storage  # type: ignore
@@ -180,7 +181,7 @@ class Limiter:
             self._default_limits.extend(
                 [
                     LimitGroup(
-                        limit, self._key_func, None, False, None, None, None, False
+                        limit, self._key_func, None, False, None, None, None, 1, False
                     )
                 ]
             )
@@ -188,7 +189,15 @@ class Limiter:
             self._application_limits.extend(
                 [
                     LimitGroup(
-                        limit, self._key_func, "global", False, None, None, None, False
+                        limit,
+                        self._key_func,
+                        "global",
+                        False,
+                        None,
+                        None,
+                        None,
+                        1,
+                        False,
                     )
                 ]
             )
@@ -196,7 +205,7 @@ class Limiter:
             self._in_memory_fallback.extend(
                 [
                     LimitGroup(
-                        limit, self._key_func, None, False, None, None, None, False
+                        limit, self._key_func, None, False, None, None, None, 1, False
                     )
                 ]
             )
@@ -223,7 +232,7 @@ class Limiter:
             C.HEADERS_ENABLED, False
         )
         self._storage_options.update(self.get_app_config(C.STORAGE_OPTIONS, {}))
-        self._storage: Storage = storage_from_string(
+        self._storage: Union[Storage, AsyncStorage] = storage_from_string(
             self._storage_uri or self.get_app_config(C.STORAGE_URL, "memory://"),
             **self._storage_options,
         )
@@ -261,7 +270,15 @@ class Limiter:
         if not self._application_limits and app_limits:
             self._application_limits = [
                 LimitGroup(
-                    app_limits, self._key_func, "global", False, None, None, None, False
+                    app_limits,
+                    self._key_func,
+                    "global",
+                    False,
+                    None,
+                    None,
+                    None,
+                    1,
+                    False,
                 )
             ]
 
@@ -271,7 +288,7 @@ class Limiter:
         if not self._default_limits and conf_limits:
             self._default_limits = [
                 LimitGroup(
-                    conf_limits, self._key_func, None, False, None, None, None, False
+                    conf_limits, self._key_func, None, False, None, None, None, 1, False
                 )
             ]
         fallback_enabled = self.get_app_config(C.IN_MEMORY_FALLBACK_ENABLED, False)
@@ -288,6 +305,7 @@ class Limiter:
                     None,
                     None,
                     None,
+                    1,
                     False,
                 )
             ]
@@ -338,6 +356,9 @@ class Limiter:
         The backend that keeps track of consumption of endpoints vs limits
         """
         if self._storage_dead and self._in_memory_fallback_enabled:
+            assert (
+                self._fallback_limiter
+            ), "Fallback limiter is needed when in memory fallback is enabled"
             return self._fallback_limiter
         else:
             return self._limiter
@@ -420,7 +441,9 @@ class Limiter:
                     args = [self._key_prefix] + args
                 if not limit_for_header or lim.limit < limit_for_header[0]:
                     limit_for_header = (lim.limit, args)
-                if not self.limiter.hit(lim.limit, *args):
+
+                cost = lim.cost(request) if callable(lim.cost) else lim.cost
+                if not self.limiter.hit(lim.limit, *args, cost=cost):
                     self.logger.warning(
                         "ratelimit %s (%s) exceeded at endpoint: %s",
                         lim.limit,
@@ -559,6 +582,7 @@ class Limiter:
         methods: Optional[List[str]] = None,
         error_message: Optional[str] = None,
         exempt_when: Optional[Callable[..., bool]] = None,
+        cost: Union[int, Callable[..., int]] = 1,
         override_defaults: bool = True,
     ) -> Callable[..., Any]:
 
@@ -578,6 +602,7 @@ class Limiter:
                     methods,
                     error_message,
                     exempt_when,
+                    cost,
                     override_defaults,
                 )
             else:
@@ -591,6 +616,7 @@ class Limiter:
                             methods,
                             error_message,
                             exempt_when,
+                            cost,
                             override_defaults,
                         )
                     )
@@ -691,6 +717,7 @@ class Limiter:
         methods: Optional[List[str]] = None,
         error_message: Optional[str] = None,
         exempt_when: Optional[Callable[..., bool]] = None,
+        cost: Union[int, Callable[..., int]] = 1,
         override_defaults: bool = True,
     ) -> Callable:
         """
@@ -708,6 +735,7 @@ class Limiter:
          error message used in the response.
         * **exempt_when**: function returning a boolean indicating whether to exempt
         the route from the limit
+        * **cost**: integer (or callable that returns one) which is the cost of a hit
         * **override_defaults**: whether to override the default limits (default: True)
         """
         return self.__limit_decorator(
@@ -717,6 +745,7 @@ class Limiter:
             methods=methods,
             error_message=error_message,
             exempt_when=exempt_when,
+            cost=cost,
             override_defaults=override_defaults,
         )
 
@@ -727,6 +756,7 @@ class Limiter:
         key_func: Optional[Callable[..., str]] = None,
         error_message: Optional[str] = None,
         exempt_when: Optional[Callable[..., bool]] = None,
+        cost: Union[int, Callable[..., int]] = 1,
         override_defaults: bool = True,
     ) -> Callable:
         """
@@ -746,6 +776,7 @@ class Limiter:
          error message used in the response.
         * **exempt_when**: function returning a boolean indicating whether to exempt
         the route from the limit
+        * **cost**: integer (or callable that returns one) which is the cost of a hit
         * **override_defaults**: whether to override the default limits (default: True)
         """
         return self.__limit_decorator(
@@ -755,6 +786,7 @@ class Limiter:
             scope,
             error_message=error_message,
             exempt_when=exempt_when,
+            cost=cost,
             override_defaults=override_defaults,
         )
 
