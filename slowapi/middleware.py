@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Iterable, Tuple
 
 from starlette.applications import Starlette
 from starlette.datastructures import MutableHeaders
@@ -8,10 +8,61 @@ from starlette.middleware.base import (
 )
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.routing import Match
+from starlette.routing import BaseRoute, Match
 from starlette.types import ASGIApp, Message, Scope, Receive, Send
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
+
+
+def _find_route_handler(routes: Iterable[BaseRoute], scope: Scope):
+    handler = None
+    for route in routes:
+        match, _ = route.matches(scope)
+        if match == Match.FULL and hasattr(route, "endpoint"):
+            handler = route.endpoint  # type: ignore
+    return handler
+
+
+def _get_route_name(handler):
+    return "%s.%s" % (handler.__module__, handler.__name__)
+
+
+def _check_limits(
+    limiter: Limiter, request: Request, handler, app: Starlette
+) -> Tuple[Optional[Response], bool]:
+    if limiter._auto_check and not getattr(
+        request.state, "_rate_limiting_complete", False
+    ):
+        try:
+            limiter._check_request_limit(request, handler, True)
+        except Exception as e:
+            # handle the exception since the global exception handler won't pick it up if we call_next
+            exception_handler = app.exception_handlers.get(
+                type(e), _rate_limit_exceeded_handler
+            )
+            return exception_handler(request, e), False
+        # request.state._rate_limiting_complete = True
+
+        return None, True
+    return None, False
+
+
+def _should_exempt(limiter: Limiter, handler) -> bool:
+    # if we can't find the route handler
+    if handler is None:
+        return True
+
+    name = _get_route_name(handler)
+
+    # if exempt no need to check
+    if name in limiter._exempt_routes:
+        return True
+
+    # there is a decorator for this route we let the decorator handle it
+    if name in limiter._route_limits:
+        return True
+
+    return False
 
 
 class SlowAPIMiddleware(BaseHTTPMiddleware):
@@ -20,44 +71,24 @@ class SlowAPIMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         app: Starlette = request.app
         limiter: Limiter = app.state.limiter
-        handler = None
+
         if not limiter.enabled:
             return await call_next(request)
 
-        for route in app.routes:
-            match, _ = route.matches(request.scope)
-            if match == Match.FULL and hasattr(route, "endpoint"):
-                handler = route.endpoint  # type: ignore
-        # if we can't find the route handler
-        if handler is None:
+        handler = _find_route_handler(app.routes, request.scope)
+        if _should_exempt(limiter, handler):
             return await call_next(request)
 
-        name = "%s.%s" % (handler.__module__, handler.__name__)
-        # if exempt no need to check
-        if name in limiter._exempt_routes:
-            return await call_next(request)
+        error_response, should_inject_headers = _check_limits(
+            limiter, request, handler, app
+        )
+        if error_response is not None:
+            return error_response
 
-        # there is a decorator for this route we let the decorator handle it
-        if name in limiter._route_limits:
-            return await call_next(request)
-
-        # let the decorator handle if already in
-        if limiter._auto_check and not getattr(
-            request.state, "_rate_limiting_complete", False
-        ):
-            try:
-                limiter._check_request_limit(request, handler, True)
-            except Exception as e:
-                # handle the exception since the global exception handler won't pick it up if we call_next
-                exception_handler = app.exception_handlers.get(
-                    type(e), _rate_limit_exceeded_handler
-                )
-                return exception_handler(request, e)
-            # request.state._rate_limiting_complete = True
-            response = await call_next(request)
+        response = await call_next(request)
+        if should_inject_headers:
             response = limiter._inject_headers(response, request.state.view_rate_limit)
-            return response
-        return await call_next(request)
+        return response
 
 
 class SlowAPIASGIMiddleware:
@@ -97,50 +128,25 @@ class SlowAPIASGIMiddleware:
 
         _app: Starlette = scope["app"]
         limiter: Limiter = _app.state.limiter
-        handler = None
 
         if not limiter.enabled:
             return await self.app(scope, receive, self.send)
 
-        for route in _app.routes:
-            match, _ = route.matches(scope)
-            if match == Match.FULL and hasattr(route, "endpoint"):
-                handler = route.endpoint  # type: ignore
-
-        # if we can't find the route handler
-        if handler is None:
-            return await self.app(scope, receive, self.send)
-
-        name = "%s.%s" % (handler.__module__, handler.__name__)
-
-        # if exempt no need to check
-        if name in limiter._exempt_routes:
-            return await self.app(scope, receive, self.send)
-
-        # there is a decorator for this route we let the decorator handle it
-        if name in limiter._route_limits:
-            return await self.app(scope, receive, self.send)
-
-        # Limit
+        handler = _find_route_handler(_app.routes, scope)
         request = Request(scope, receive=receive, send=self.send)
+        if _should_exempt(limiter, handler):
+            return await self.app(scope, receive, self.send)
 
         # let the decorator handle if already in
-        if limiter._auto_check and not getattr(
-            request.state, "_rate_limiting_complete", False
-        ):
-            try:
-                limiter._check_request_limit(request, handler, True)
-            except Exception as e:
-                # handle the exception since the global exception handler won't pick exceptions
-                # raised from an ASGI Middleware
-                exception_handler = _app.exception_handlers.get(
-                    type(e), _rate_limit_exceeded_handler
-                )
-                response = exception_handler(request, e)
-                self.error_response = response
-                return await response(scope, receive, self.send_wrapper)
+        error_response, should_inject_headers = _check_limits(
+            limiter, request, handler, _app
+        )
+        if error_response is not None:
+            return await error_response(scope, receive, self.send_wrapper)
 
+        if should_inject_headers:
             self.inject_headers = True
             self.limiter = limiter
             self.request = request
+
         return await self.app(scope, receive, self.send_wrapper)
