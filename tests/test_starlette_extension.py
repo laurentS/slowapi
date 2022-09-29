@@ -10,8 +10,8 @@ from tests import TestSlowapi
 
 
 class TestDecorators(TestSlowapi):
-    def test_single_decorator_async(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_single_decorator_async(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         @limiter.limit("5/minute")
         async def t1(request: Request):
@@ -26,8 +26,8 @@ class TestDecorators(TestSlowapi):
             if i < 5:
                 assert response.text == "test"
 
-    def test_single_decorator_sync(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_single_decorator_sync(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         @limiter.limit("5/minute")
         def t1(request: Request):
@@ -42,8 +42,8 @@ class TestDecorators(TestSlowapi):
             if i < 5:
                 assert response.text == "test"
 
-    def test_shared_decorator(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_shared_decorator(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         shared_lim = limiter.shared_limit("5/minute", "somescope")
 
@@ -65,8 +65,8 @@ class TestDecorators(TestSlowapi):
         # the shared limit has already been hit via t1
         assert client.get("/t2").status_code == 429
 
-    def test_multiple_decorators(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_multiple_decorators(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         @limiter.limit("10 per minute", lambda: "test")
         @limiter.limit("5/minute")  # per ip as per default key_func
@@ -89,10 +89,8 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_multiple_decorators_with_headers(self):
-        app, limiter = self.build_starlette_app(
-            key_func=get_ipaddr, headers_enabled=True
-        )
+    def test_multiple_decorators_with_headers(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr, headers_enabled=True)
 
         @limiter.limit("10 per minute", lambda: "test")
         @limiter.limit("5/minute")  # per ip as per default key_func
@@ -116,8 +114,8 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_headers_no_breach(self):
-        app, limiter = self.build_starlette_app(
+    def test_headers_no_breach(self, build_starlette_app):
+        app, limiter = build_starlette_app(
             headers_enabled=True, key_func=get_remote_address
         )
 
@@ -149,8 +147,8 @@ class TestDecorators(TestSlowapi):
 
                 assert resp.headers.get("Retry-After") == str(1)
 
-    def test_headers_breach(self):
-        app, limiter = self.build_starlette_app(
+    def test_headers_breach(self, build_starlette_app):
+        app, limiter = build_starlette_app(
             headers_enabled=True, key_func=get_remote_address
         )
 
@@ -172,10 +170,10 @@ class TestDecorators(TestSlowapi):
                 )
                 assert resp.headers.get("Retry-After") == str(int(50))
 
-    def test_retry_after(self):
+    def test_retry_after(self, build_starlette_app):
         # FIXME: this test is not actually running!
 
-        app, limiter = self.build_starlette_app(
+        app, limiter = build_starlette_app(
             headers_enabled=True, key_func=get_remote_address
         )
 
@@ -193,8 +191,8 @@ class TestDecorators(TestSlowapi):
                 resp = cli.get("/t1")
                 assert resp.status_code == 200
 
-    def test_exempt_decorator(self):
-        app, limiter = self.build_starlette_app(
+    def test_exempt_decorator(self, build_starlette_app):
+        app, limiter = build_starlette_app(
             headers_enabled=True,
             key_func=get_remote_address,
             default_limits=["1/minute"],
@@ -235,8 +233,8 @@ class TestDecorators(TestSlowapi):
             assert resp2.status_code == 200
 
     # todo: more tests - see https://github.com/alisaifee/flask-limiter/blob/55df08f14143a7e918fc033067a494248ab6b0c5/tests/test_decorators.py#L187
-    def test_default_and_decorator_limit_merging(self):
-        app, limiter = self.build_starlette_app(
+    def test_default_and_decorator_limit_merging(self, build_starlette_app):
+        app, limiter = build_starlette_app(
             key_func=lambda: "test", default_limits=["10/minute"]
         )
 

@@ -9,8 +9,8 @@ from tests import TestSlowapi
 
 
 class TestDecorators(TestSlowapi):
-    def test_single_decorator(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+    def test_single_decorator(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         @app.get("/t1")
         @limiter.limit("5/minute")
@@ -22,8 +22,8 @@ class TestDecorators(TestSlowapi):
             response = client.get("/t1")
             assert response.status_code == 200 if i < 5 else 429
 
-    def test_single_decorator_with_headers(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
+    def test_single_decorator_with_headers(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
 
         @app.get("/t1")
         @limiter.limit("5/minute")
@@ -39,8 +39,8 @@ class TestDecorators(TestSlowapi):
             )
             assert response.headers.get("Retry-After") is not None if i < 5 else True
 
-    def test_single_decorator_not_response(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+    def test_single_decorator_not_response(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         @app.get("/t1")
         @limiter.limit("5/minute")
@@ -52,8 +52,8 @@ class TestDecorators(TestSlowapi):
             response = client.get("/t1")
             assert response.status_code == 200 if i < 5 else 429
 
-    def test_single_decorator_not_response_with_headers(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
+    def test_single_decorator_not_response_with_headers(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
 
         @app.get("/t1")
         @limiter.limit("5/minute")
@@ -69,8 +69,8 @@ class TestDecorators(TestSlowapi):
             )
             assert response.headers.get("Retry-After") is not None if i < 5 else True
 
-    def test_multiple_decorators(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+    def test_multiple_decorators(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         @app.get("/t1")
         @limiter.limit(
@@ -94,8 +94,8 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_multiple_decorators_not_response(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+    def test_multiple_decorators_not_response(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         @app.get("/t1")
         @limiter.limit(
@@ -119,8 +119,8 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_multiple_decorators_not_response_with_headers(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
+    def test_multiple_decorators_not_response_with_headers(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
 
         @app.get("/t1")
         @limiter.limit(
@@ -144,8 +144,8 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_endpoint_missing_request_param(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+    def test_endpoint_missing_request_param(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         with pytest.raises(Exception) as exc_info:
 
@@ -158,8 +158,8 @@ class TestDecorators(TestSlowapi):
             r"""^No "request" or "websocket" argument on function .*"""
         )
 
-    def test_endpoint_missing_request_param_sync(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+    def test_endpoint_missing_request_param_sync(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         with pytest.raises(Exception) as exc_info:
 
@@ -172,8 +172,8 @@ class TestDecorators(TestSlowapi):
             r"""^No "request" or "websocket" argument on function .*"""
         )
 
-    def test_endpoint_request_param_invalid(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+    def test_endpoint_request_param_invalid(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         @app.get("/t4")
         @limiter.limit("5/minute")
@@ -187,8 +187,8 @@ class TestDecorators(TestSlowapi):
             r"""parameter `request` must be an instance of starlette.requests.Request"""
         )
 
-    def test_endpoint_response_param_invalid(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
+    def test_endpoint_response_param_invalid(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
 
         @app.get("/t4")
         @limiter.limit("5/minute")
@@ -202,8 +202,8 @@ class TestDecorators(TestSlowapi):
             r"""parameter `response` must be an instance of starlette.responses.Response"""
         )
 
-    def test_endpoint_request_param_invalid_sync(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr)
+    def test_endpoint_request_param_invalid_sync(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         @app.get("/t5")
         @limiter.limit("5/minute")
@@ -217,8 +217,8 @@ class TestDecorators(TestSlowapi):
             r"""parameter `request` must be an instance of starlette.requests.Request"""
         )
 
-    def test_endpoint_response_param_invalid_sync(self):
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
+    def test_endpoint_response_param_invalid_sync(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
 
         @app.get("/t5")
         @limiter.limit("5/minute")
@@ -232,7 +232,7 @@ class TestDecorators(TestSlowapi):
             r"""parameter `response` must be an instance of starlette.responses.Response"""
         )
 
-    def test_dynamic_limit_provider_depending_on_key(self):
+    def test_dynamic_limit_provider_depending_on_key(self, build_fastapi_app):
         def custom_key_func(request: Request):
             if request.headers.get("TOKEN") == "secret":
                 return "admin"
@@ -243,7 +243,7 @@ class TestDecorators(TestSlowapi):
                 return "10/minute"
             return "5/minute"
 
-        app, limiter = self.build_fastapi_app(key_func=custom_key_func)
+        app, limiter = build_fastapi_app(key_func=custom_key_func)
 
         @app.get("/t1")
         @limiter.limit(dynamic_limit_provider)
@@ -259,11 +259,11 @@ class TestDecorators(TestSlowapi):
             response = client.get("/t1", headers={"TOKEN": "secret"})
             assert response.status_code == 200 if i < 10 else 429
 
-    def test_disabled_limiter(self):
+    def test_disabled_limiter(self, build_fastapi_app):
         """
         Check that the limiter does nothing if disabled (both sync and async)
         """
-        app, limiter = self.build_fastapi_app(key_func=get_ipaddr, enabled=False)
+        app, limiter = build_fastapi_app(key_func=get_ipaddr, enabled=False)
 
         @app.get("/t1")
         @limiter.limit("5/minute")
