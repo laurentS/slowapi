@@ -29,6 +29,7 @@ from limits.storage import MemoryStorage, storage_from_string  # type: ignore
 from limits.storage import Storage  # type: ignore
 from limits.strategies import STRATEGIES, RateLimiter  # type: ignore
 from starlette.config import Config
+from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -415,6 +416,51 @@ class Limiter:
                 else:
                     raise
         return response
+
+    def _inject_asgi_headers(
+        self, headers: MutableHeaders, current_limit: Tuple[RateLimitItem, List[str]]
+    ) -> MutableHeaders:
+        if self.enabled and self._headers_enabled and current_limit is not None:
+            try:
+                window_stats: Tuple[int, int] = self.limiter.get_window_stats(
+                    current_limit[0], *current_limit[1]
+                )
+                reset_in = 1 + window_stats[0]
+                headers[self._header_mapping[HEADERS.LIMIT]] = str(
+                    current_limit[0].amount
+                )
+                headers[self._header_mapping[HEADERS.REMAINING]] = str(window_stats[1])
+                headers[self._header_mapping[HEADERS.RESET]] = str(reset_in)
+
+                # response may have an existing retry after
+                existing_retry_after_header = headers.get("Retry-After")
+
+                if existing_retry_after_header is not None:
+                    reset_in = max(
+                        self._determine_retry_time(existing_retry_after_header),
+                        reset_in,
+                    )
+
+                headers[self._header_mapping[HEADERS.RETRY_AFTER]] = (
+                    formatdate(reset_in)
+                    if self._retry_after == "http-date"
+                    else str(int(reset_in - time.time()))
+                )
+            except Exception:
+                if self._in_memory_fallback and not self._storage_dead:
+                    self.logger.warning(
+                        "Rate limit storage unreachable - falling back to"
+                        " in-memory storage"
+                    )
+                    self._storage_dead = True
+                    headers = self._inject_asgi_headers(headers, current_limit)
+                if self._swallow_errors:
+                    self.logger.exception(
+                        "Failed to update rate limit headers. Swallowing error"
+                    )
+                else:
+                    raise
+        return headers
 
     def __evaluate_limits(
         self, request: Request, endpoint: str, limits: List[Limit]
