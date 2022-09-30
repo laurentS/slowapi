@@ -258,8 +258,8 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_cost(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_cost(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         @limiter.limit("50/minute", cost=10)
         async def t1(request: Request):
@@ -289,8 +289,8 @@ class TestDecorators(TestSlowapi):
             else:
                 assert "error" in response.json()
 
-    def test_callable_cost(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_callable_cost(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         @limiter.limit("50/minute", cost=lambda request: int(request.headers["foo"]))
         async def t1(request: Request):
