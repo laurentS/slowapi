@@ -94,11 +94,22 @@ class SlowAPIMiddleware(BaseHTTPMiddleware):
 class SlowAPIASGIMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        await _ASGIMiddlewareResponder(self.app)(scope, receive, send)
+
+
+class _ASGIMiddlewareResponder:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
         self.error_response: Optional[Response] = None
         self.initial_message: Message = {}
         self.inject_headers = False
 
-    async def send_wrapper(self, message: Message):
+    async def send_wrapper(self, message: Message) -> None:
         if message["type"] == "http.response.start":
             # do not send the http.response.start message now, so that we can edit the headers
             # before sending it, based on what happens in the http.response.body message.
@@ -120,10 +131,6 @@ class SlowAPIASGIMiddleware:
             await self.send(message)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-
         self.send = send
 
         _app: Starlette = scope["app"]
