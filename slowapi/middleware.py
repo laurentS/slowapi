@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, Tuple
+from typing import Callable, Iterable, Optional, Tuple, Type
 
 from starlette.applications import Starlette
 from starlette.datastructures import MutableHeaders
@@ -14,7 +14,9 @@ from starlette.types import ASGIApp, Message, Scope, Receive, Send
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
 
-def _find_route_handler(routes: Iterable[BaseRoute], scope: Scope):
+def _find_route_handler(
+    routes: Iterable[BaseRoute], scope: Scope
+) -> Optional[Callable]:
     handler = None
     for route in routes:
         match, _ = route.matches(scope)
@@ -23,12 +25,12 @@ def _find_route_handler(routes: Iterable[BaseRoute], scope: Scope):
     return handler
 
 
-def _get_route_name(handler):
+def _get_route_name(handler: Type[Callable]):
     return "%s.%s" % (handler.__module__, handler.__name__)
 
 
 def _check_limits(
-    limiter: Limiter, request: Request, handler, app: Starlette
+    limiter: Limiter, request: Request, handler: Optional[Callable], app: Starlette
 ) -> Tuple[Optional[Response], bool]:
     if limiter._auto_check and not getattr(
         request.state, "_rate_limiting_complete", False
@@ -41,13 +43,12 @@ def _check_limits(
                 type(e), _rate_limit_exceeded_handler
             )
             return exception_handler(request, e), False
-        # request.state._rate_limiting_complete = True
 
         return None, True
     return None, False
 
 
-def _should_exempt(limiter: Limiter, handler) -> bool:
+def _should_exempt(limiter: Limiter, handler: Optional[Callable]) -> bool:
     # if we can't find the route handler
     if handler is None:
         return True
@@ -144,7 +145,6 @@ class _ASGIMiddlewareResponder:
         if _should_exempt(limiter, handler):
             return await self.app(scope, receive, self.send)
 
-        # let the decorator handle if already in
         error_response, should_inject_headers = _check_limits(
             limiter, request, handler, _app
         )
