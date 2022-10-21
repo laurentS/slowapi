@@ -420,6 +420,13 @@ class Limiter:
     def _inject_asgi_headers(
         self, headers: MutableHeaders, current_limit: Tuple[RateLimitItem, List[str]]
     ) -> MutableHeaders:
+        """
+        Injects 'X-RateLimit-Reset', 'X-RateLimit-Remaining', 'X-RateLimit-Limit'
+        and 'Retry-After' headers into :headers parameter if needed.
+
+        Basically the same as _inject_headers, but without access to the Response object.
+        -> supports ASGI Middlewares.
+        """
         if self.enabled and self._headers_enabled and current_limit is not None:
             try:
                 window_stats: Tuple[int, int] = self.limiter.get_window_stats(

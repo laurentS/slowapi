@@ -33,6 +33,13 @@ def _get_route_name(handler: Type[Callable]):
 def _check_limits(
     limiter: Limiter, request: Request, handler: Optional[Callable], app: Starlette
 ) -> Tuple[Optional[Union[Callable, Coroutine]], bool, Optional[Exception]]:
+    """
+    Utils to check (if needed) current requests limit.
+    It returns a tuple of size 3:
+        1. The exception handler to run, if needed
+        2. a bool, True if we need to inject some headers, False otherwise
+        3. the exception that happened, if any
+    """
     if limiter._auto_check and not getattr(
         request.state, "_rate_limiting_complete", False
     ):
@@ -52,6 +59,12 @@ def _check_limits(
 def sync_check_limits(
     limiter: Limiter, request: Request, handler: Optional[Callable], app: Starlette
 ) -> Tuple[Optional[Response], bool]:
+    """
+    Returns a `Response` object if an error occurred, as well as a boolean to know
+    whether we should inject headers or not.
+    Used in our WSGI middleware, it only supports synchronous exception_handler.
+    This will fallback on _rate_limit_exceeded_handler otherwise.
+    """
     exception_handler, _bool, exc = _check_limits(limiter, request, handler, app)
     if not exception_handler or not exc:
         return None, _bool
@@ -67,6 +80,11 @@ def sync_check_limits(
 async def async_check_limits(
     limiter: Limiter, request: Request, handler: Optional[Callable], app: Starlette
 ) -> Tuple[Optional[Response], bool]:
+    """
+    Returns a `Response` object if an error occurred, as well as a boolean to know
+    whether we should inject headers or not.
+    Used in our ASGI middleware, this support both synchronous or asynchronous exception handlers.
+    """
     exception_handler, _bool, exc = _check_limits(limiter, request, handler, app)
     if not exception_handler:
         return None, _bool
