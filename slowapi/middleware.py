@@ -1,4 +1,5 @@
-from typing import Callable, Iterable, Optional, Tuple, Type
+import inspect
+from typing import Callable, Coroutine, Iterable, Optional, Tuple, Type, Union
 
 from starlette.applications import Starlette
 from starlette.datastructures import MutableHeaders
@@ -31,7 +32,7 @@ def _get_route_name(handler: Type[Callable]):
 
 def _check_limits(
     limiter: Limiter, request: Request, handler: Optional[Callable], app: Starlette
-) -> Tuple[Optional[Response], bool]:
+) -> Tuple[Optional[Union[Callable, Coroutine]], bool, Optional[Exception]]:
     if limiter._auto_check and not getattr(
         request.state, "_rate_limiting_complete", False
     ):
@@ -42,10 +43,38 @@ def _check_limits(
             exception_handler = app.exception_handlers.get(
                 type(e), _rate_limit_exceeded_handler
             )
-            return exception_handler(request, e), False
+            return exception_handler, False, e
 
-        return None, True
-    return None, False
+        return None, True, None
+    return None, False, None
+
+
+def sync_check_limits(
+    limiter: Limiter, request: Request, handler: Optional[Callable], app: Starlette
+) -> Tuple[Optional[Response], bool]:
+    exception_handler, _bool, exc = _check_limits(limiter, request, handler, app)
+    if not exception_handler or not exc:
+        return None, _bool
+
+    # cannot execute asynchronous code in a synchronous middleware,
+    # -> fallback on default exception handler
+    if inspect.iscoroutinefunction(exception_handler):
+        exception_handler = _rate_limit_exceeded_handler
+
+    return exception_handler(request, exc), _bool
+
+
+async def async_check_limits(
+    limiter: Limiter, request: Request, handler: Optional[Callable], app: Starlette
+) -> Tuple[Optional[Response], bool]:
+    exception_handler, _bool, exc = _check_limits(limiter, request, handler, app)
+    if not exception_handler:
+        return None, _bool
+
+    if inspect.iscoroutinefunction(exception_handler):
+        return await exception_handler(request, exc), _bool
+    else:
+        return exception_handler(request, exc), _bool
 
 
 def _should_exempt(limiter: Limiter, handler: Optional[Callable]) -> bool:
@@ -80,7 +109,7 @@ class SlowAPIMiddleware(BaseHTTPMiddleware):
         if _should_exempt(limiter, handler):
             return await call_next(request)
 
-        error_response, should_inject_headers = _check_limits(
+        error_response, should_inject_headers = sync_check_limits(
             limiter, request, handler, app
         )
         if error_response is not None:
@@ -145,7 +174,7 @@ class _ASGIMiddlewareResponder:
         if _should_exempt(limiter, handler):
             return await self.app(scope, receive, self.send)
 
-        error_response, should_inject_headers = _check_limits(
+        error_response, should_inject_headers = await async_check_limits(
             limiter, request, handler, _app
         )
         if error_response is not None:
