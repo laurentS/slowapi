@@ -1,5 +1,5 @@
 import inspect
-from typing import Callable, Coroutine, Iterable, Optional, Tuple, Type, Union
+from typing import Callable, Iterable, Optional, Tuple, Type
 
 from starlette.applications import Starlette
 from starlette.datastructures import MutableHeaders
@@ -26,13 +26,13 @@ def _find_route_handler(
     return handler
 
 
-def _get_route_name(handler: Type[Callable]):
+def _get_route_name(handler: Callable):
     return "%s.%s" % (handler.__module__, handler.__name__)
 
 
 def _check_limits(
     limiter: Limiter, request: Request, handler: Optional[Callable], app: Starlette
-) -> Tuple[Optional[Union[Callable, Coroutine]], bool, Optional[Exception]]:
+) -> Tuple[Optional[Callable], bool, Optional[Exception]]:
     """
     Utils to check (if needed) current requests limit.
     It returns a tuple of size 3:
@@ -74,7 +74,7 @@ def sync_check_limits(
     if inspect.iscoroutinefunction(exception_handler):
         exception_handler = _rate_limit_exceeded_handler
 
-    return exception_handler(request, exc), _bool
+    return exception_handler(request, exc), _bool  # type: ignore
 
 
 async def async_check_limits(

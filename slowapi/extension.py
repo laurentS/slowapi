@@ -540,7 +540,7 @@ class Limiter:
     def _check_request_limit(
         self,
         request: Request,
-        endpoint_func: Callable[..., Any],
+        endpoint_func: Optional[Callable[..., Any]],
         in_middleware: bool = True,
     ) -> None:
         """
