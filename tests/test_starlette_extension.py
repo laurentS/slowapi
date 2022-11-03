@@ -1,6 +1,7 @@
 import time
 
 import hiro  # type: ignore
+import pytest  # type: ignore
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
@@ -321,3 +322,29 @@ class TestDecorators(TestSlowapi):
                 assert response.text == "test"
             else:
                 assert "error" in response.json()
+
+    @pytest.mark.parametrize(
+        "key_style, expected_key",
+        [
+            ("url", "LIMITER/mock//t1/1/1/minute"),
+            (
+                "endpoint",
+                "LIMITER/mock/tests.test_starlette_extension.t1_func/1/1/minute",
+            ),
+        ],
+    )
+    def test_key_style(self, key_style, expected_key):
+        app, limiter = self.build_starlette_app(
+            key_func=lambda: "mock", key_style=key_style
+        )
+
+        @limiter.limit("1/minute")
+        async def t1_func(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1_func)
+
+        client = TestClient(app)
+        client.get("/t1", headers={"foo": "10"})
+
+        assert limiter._storage.get(expected_key) == 1

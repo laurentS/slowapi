@@ -335,3 +335,27 @@ class TestDecorators(TestSlowapi):
 
             response = client.get("/t2", headers={"foo": "5"})
             assert response.status_code == 200 if i < 6 else 429
+
+    @pytest.mark.parametrize(
+        "key_style, expected_key",
+        [
+            ("url", "LIMITER/mock//t1/1/1/minute"),
+            (
+                "endpoint",
+                "LIMITER/mock/tests.test_fastapi_extension.t1_func/1/1/minute",
+            ),
+        ],
+    )
+    def test_key_style(self, key_style, expected_key):
+        app, limiter = self.build_fastapi_app(
+            key_func=lambda: "mock", key_style=key_style
+        )
+
+        @app.get("/t1")
+        @limiter.limit("1/minute")
+        async def t1_func(request: Request):
+            return PlainTextResponse("test")
+
+        client = TestClient(app)
+        client.get("/t1", headers={"foo": "10"})
+        assert limiter._storage.get(expected_key) == 1

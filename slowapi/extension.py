@@ -14,6 +14,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Literal,
     List,
     Optional,
     Set,
@@ -123,6 +124,7 @@ class Limiter:
     * **enabled**: set to False to deactivate the limiter (default: True)
     * **config_filename**: name of the config file for Starlette from which to load settings
      for the rate limiter. Defaults to ".env".
+    * **key_style**: set to "url" to use the url, "endpoint" to use the view_func
     """
 
     def __init__(
@@ -143,6 +145,7 @@ class Limiter:
         key_prefix: str = "",
         enabled: bool = True,
         config_filename: Optional[str] = None,
+        key_style: Literal["endpoint", "url"] = "url",
     ) -> None:
         """
         Configure the rate limiter at app level
@@ -177,6 +180,7 @@ class Limiter:
 
         self._key_func = key_func
         self._key_prefix = key_prefix
+        self._key_style = key_style
 
         for limit in set(default_limits):
             self._default_limits.extend(
@@ -547,13 +551,13 @@ class Limiter:
         Determine if the request is within limits
         """
         endpoint = request["path"] or ""
-        # view_func = current_app.view_functions.get(endpoint, None)
         view_func = endpoint_func
 
         name = "%s.%s" % (view_func.__module__, view_func.__name__) if view_func else ""
+        _endpoint_key = endpoint if self._key_style == "url" else name
         # cases where we don't need to check the limits
         if (
-            not endpoint
+            not _endpoint_key
             or not self.enabled
             # or we are sending a static file
             # or view_func == current_app.send_static_file
@@ -608,7 +612,7 @@ class Limiter:
                 ):
                     all_limits += list(itertools.chain(*self._default_limits))
             # actually check the limits, so far we've only computed the list of limits to check
-            self.__evaluate_limits(request, endpoint, all_limits)
+            self.__evaluate_limits(request, _endpoint_key, all_limits)
         except Exception as e:  # no qa
             if isinstance(e, RateLimitExceeded):
                 raise
