@@ -1,5 +1,5 @@
 import inspect
-from typing import Callable, Iterable, Optional, Tuple, Type
+from typing import Callable, Iterable, Optional, Tuple
 
 from starlette.applications import Starlette
 from starlette.datastructures import MutableHeaders
