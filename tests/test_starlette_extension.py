@@ -333,8 +333,8 @@ class TestDecorators(TestSlowapi):
             ),
         ],
     )
-    def test_key_style(self, key_style, expected_key):
-        app, limiter = self.build_starlette_app(
+    def test_key_style(self, build_starlette_app, key_style, expected_key):
+        app, limiter = build_starlette_app(
             key_func=lambda: "mock", key_style=key_style
         )
 

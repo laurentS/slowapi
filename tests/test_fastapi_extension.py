@@ -346,8 +346,8 @@ class TestDecorators(TestSlowapi):
             ),
         ],
     )
-    def test_key_style(self, key_style, expected_key):
-        app, limiter = self.build_fastapi_app(
+    def test_key_style(self, build_fastapi_app, key_style, expected_key):
+        app, limiter = build_fastapi_app(
             key_func=lambda: "mock", key_style=key_style
         )
 
