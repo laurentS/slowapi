@@ -27,7 +27,7 @@ def _find_route_handler(
 
 
 def _get_route_name(handler: Callable):
-    return "%s.%s" % (handler.__module__, handler.__name__)
+    return f"{handler.__module__}.{handler.__name__}"
 
 
 def _check_limits(
