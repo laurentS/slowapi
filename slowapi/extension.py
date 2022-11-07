@@ -14,7 +14,6 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Literal,
     List,
     Optional,
     Set,
@@ -33,6 +32,7 @@ from starlette.config import Config
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from typing_extensions import Literal
 
 from .errors import RateLimitExceeded
 from .wrappers import Limit, LimitGroup
