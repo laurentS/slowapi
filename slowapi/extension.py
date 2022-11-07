@@ -550,18 +550,20 @@ class Limiter:
         """
         Determine if the request is within limits
         """
-        endpoint = request["path"] or ""
+        endpoint_url = request["path"] or ""
         view_func = endpoint_func
 
-        name = "%s.%s" % (view_func.__module__, view_func.__name__) if view_func else ""
-        _endpoint_key = endpoint if self._key_style == "url" else name
+        endpoint_func_name = (
+            f"{view_func.__module__}.{view_func.__name__}" if view_func else ""
+        )
+        _endpoint_key = endpoint_url if self._key_style == "url" else endpoint_func_name
         # cases where we don't need to check the limits
         if (
             not _endpoint_key
             or not self.enabled
             # or we are sending a static file
             # or view_func == current_app.send_static_file
-            or name in self._exempt_routes
+            or endpoint_func_name in self._exempt_routes
             or any(fn() for fn in self._request_filters)
         ):
             return
@@ -569,23 +571,27 @@ class Limiter:
         dynamic_limits: List[Limit] = []
 
         if not in_middleware:
-            limits = self._route_limits[name] if name in self._route_limits else []
+            limits = (
+                self._route_limits[endpoint_func_name]
+                if endpoint_func_name in self._route_limits
+                else []
+            )
             dynamic_limits = []
-            if name in self._dynamic_route_limits:
-                for lim in self._dynamic_route_limits[name]:
+            if endpoint_func_name in self._dynamic_route_limits:
+                for lim in self._dynamic_route_limits[endpoint_func_name]:
                     try:
                         dynamic_limits.extend(list(lim.with_request(request)))
                     except ValueError as e:
                         self.logger.error(
                             "failed to load ratelimit for view function %s (%s)",
-                            name,
+                            endpoint_func_name,
                             e,
                         )
 
         try:
             all_limits: List[Limit] = []
             if self._storage_dead and self._fallback_limiter:
-                if in_middleware and name in self.__marked_for_limiting:
+                if in_middleware and endpoint_func_name in self.__marked_for_limiting:
                     pass
                 else:
                     if self.__should_check_backend() and self._storage.check():
@@ -607,7 +613,10 @@ class Limiter:
                 )
                 if (
                     not route_limits
-                    and not (in_middleware and name in self.__marked_for_limiting)
+                    and not (
+                        in_middleware
+                        and endpoint_func_name in self.__marked_for_limiting
+                    )
                     or combined_defaults
                 ):
                     all_limits += list(itertools.chain(*self._default_limits))
