@@ -81,3 +81,24 @@ Define a function which takes a request as parameter and returns a cost and pass
     def t(request: Request):
         return PlainTextResponse("I'm limited by the request size")
 ```
+
+## WSGI vs ASGI Middleware
+
+`SlowAPIMiddleware` inheriting from Starlette's BaseHTTPMiddleware, you can find an alternative ASGI Middleware `SlowAPIASGIMiddleware`.  
+A few reasons to choose the ASGI middleware over the HTTP one are:
+- Starlette [is probably going to deprecate BaseHTTPMiddleware](https://github.com/encode/starlette/issues/1678)
+- ASGI middlewares [are more performant than WSGI ones](https://github.com/tiangolo/fastapi/issues/2241)
+- built-in support for asynchronous exception handlers
+- ...
+
+
+Both middlewares are added to your application the same way:
+```python
+app = Starlette() # or FastAPI()
+app.add_middleware(SlowAPIMiddleware)
+```
+or
+```python
+app = Starlette() # or FastAPI()
+app.add_middleware(SlowAPIASGIMiddleware)
+```
