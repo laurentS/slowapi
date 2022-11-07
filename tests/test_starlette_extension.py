@@ -326,7 +326,7 @@ class TestDecorators(TestSlowapi):
     @pytest.mark.parametrize(
         "key_style, expected_key",
         [
-            ("url", "LIMITER/mock//t1/1/1/minute"),
+            ("url", "LIMITER/mock//t1/param_one/1/1/minute"),
             (
                 "endpoint",
                 "LIMITER/mock/tests.test_starlette_extension.t1_func/1/1/minute",
@@ -340,9 +340,21 @@ class TestDecorators(TestSlowapi):
         async def t1_func(request: Request):
             return PlainTextResponse("test")
 
-        app.add_route("/t1", t1_func)
+        app.add_route("/t1/{my_param}", t1_func)
 
         client = TestClient(app)
-        client.get("/t1", headers={"foo": "10"})
-
-        assert limiter._storage.get(expected_key) == 1
+        client.get("/t1/param_one")
+        second_call = client.get("/t1/param_two")
+        # with the "url" key_style, since the `my_param` value changed, the storage key is different
+        # meaning it should not raise any RateLimitExceeded error.
+        if key_style == "url":
+            assert second_call.status_code == 200
+            # also assert that we counted only one request on the expected key
+            assert limiter._storage.get(expected_key) == 1
+        # However, with the `endpoint` key_style, it will use the function name (e.g: "t1_func")
+        # meaning it will raise a RateLimitExceeded error, because no matter the parameter value
+        # it will share the limitations.
+        elif key_style == "endpoint":
+            assert second_call.status_code == 429
+            # check that we counted 2 requests, even though we had a different value for "my_param"
+            assert limiter._storage.get(expected_key) == 2
