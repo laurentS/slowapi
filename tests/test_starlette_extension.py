@@ -1,6 +1,7 @@
 import time
 
 import hiro  # type: ignore
+import pytest  # type: ignore
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
@@ -321,3 +322,38 @@ class TestDecorators(TestSlowapi):
                 assert response.text == "test"
             else:
                 assert "error" in response.json()
+
+    @pytest.mark.parametrize(
+        "key_style",
+        ["url", "endpoint"],
+    )
+    def test_key_style(self, build_starlette_app, key_style):
+        app, limiter = build_starlette_app(key_func=lambda: "mock", key_style=key_style)
+
+        @limiter.limit("1/minute")
+        async def t1_func(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1/{my_param}", t1_func)
+
+        client = TestClient(app)
+        client.get("/t1/param_one")
+        second_call = client.get("/t1/param_two")
+        # with the "url" key_style, since the `my_param` value changed, the storage key is different
+        # meaning it should not raise any RateLimitExceeded error.
+        if key_style == "url":
+            assert second_call.status_code == 200
+            assert limiter._storage.get("LIMITER/mock//t1/param_one/1/1/minute") == 1
+            assert limiter._storage.get("LIMITER/mock//t1/param_two/1/1/minute") == 1
+        # However, with the `endpoint` key_style, it will use the function name (e.g: "t1_func")
+        # meaning it will raise a RateLimitExceeded error, because no matter the parameter value
+        # it will share the limitations.
+        elif key_style == "endpoint":
+            assert second_call.status_code == 429
+            # check that we counted 2 requests, even though we had a different value for "my_param"
+            assert (
+                limiter._storage.get(
+                    "LIMITER/mock/tests.test_starlette_extension.t1_func/1/1/minute"
+                )
+                == 2
+            )

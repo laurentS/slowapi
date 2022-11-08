@@ -102,3 +102,32 @@ or
 app = Starlette() # or FastAPI()
 app.add_middleware(SlowAPIASGIMiddleware)
 ```
+
+## Use view function's name instead of full endpoint as part of the storage key
+
+Let's use this route as an example:
+```python
+@app.route("/some_route/{some_param}")
+def my_func(some_param):
+    ...
+```
+
+```python
+limiter = Limiter(key_func=lambda: "mock", default_limits=["1/minute"], key_style="url")
+```
+
+When initializing the Limiter object with `key_style="url"`, it will use the full endpoint url as part of the storage key.
+
+When calling the `/some_route/my_param` endpoint would result with a key shaped like: `LIMITER/mock//some_route/my_param/1/1/minute`.
+
+> This means, that if the route contains some URL parameter, calling the endpoint with different parameters won't share the limitations.
+
+```python
+limiter = Limiter(key_func=lambda: "mock", default_limits=["1/minute"], key_style="endpoint")
+```
+
+When initializing the Limiter object with `key_style="endpoint"`, it will use the function name as part of the storage key.
+
+When calling the `/some_route/my_param` endpoint would result with a key shaped like: `LIMITER/mock/{module}.my_func/1/1/minute`
+
+> This means, that if the route contains some URL parameter, calling the endpoint with different parameters will still share the limitations, since the view function is the same.

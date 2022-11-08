@@ -32,6 +32,7 @@ from starlette.config import Config
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from typing_extensions import Literal
 
 from .errors import RateLimitExceeded
 from .wrappers import Limit, LimitGroup
@@ -123,6 +124,7 @@ class Limiter:
     * **enabled**: set to False to deactivate the limiter (default: True)
     * **config_filename**: name of the config file for Starlette from which to load settings
      for the rate limiter. Defaults to ".env".
+    * **key_style**: set to "url" to use the url, "endpoint" to use the view_func
     """
 
     def __init__(
@@ -143,6 +145,7 @@ class Limiter:
         key_prefix: str = "",
         enabled: bool = True,
         config_filename: Optional[str] = None,
+        key_style: Literal["endpoint", "url"] = "url",
     ) -> None:
         """
         Configure the rate limiter at app level
@@ -177,6 +180,7 @@ class Limiter:
 
         self._key_func = key_func
         self._key_prefix = key_prefix
+        self._key_style = key_style
 
         for limit in set(default_limits):
             self._default_limits.extend(
@@ -546,18 +550,20 @@ class Limiter:
         """
         Determine if the request is within limits
         """
-        endpoint = request["path"] or ""
-        # view_func = current_app.view_functions.get(endpoint, None)
+        endpoint_url = request["path"] or ""
         view_func = endpoint_func
 
-        name = "%s.%s" % (view_func.__module__, view_func.__name__) if view_func else ""
+        endpoint_func_name = (
+            f"{view_func.__module__}.{view_func.__name__}" if view_func else ""
+        )
+        _endpoint_key = endpoint_url if self._key_style == "url" else endpoint_func_name
         # cases where we don't need to check the limits
         if (
-            not endpoint
+            not _endpoint_key
             or not self.enabled
             # or we are sending a static file
             # or view_func == current_app.send_static_file
-            or name in self._exempt_routes
+            or endpoint_func_name in self._exempt_routes
             or any(fn() for fn in self._request_filters)
         ):
             return
@@ -565,23 +571,27 @@ class Limiter:
         dynamic_limits: List[Limit] = []
 
         if not in_middleware:
-            limits = self._route_limits[name] if name in self._route_limits else []
+            limits = (
+                self._route_limits[endpoint_func_name]
+                if endpoint_func_name in self._route_limits
+                else []
+            )
             dynamic_limits = []
-            if name in self._dynamic_route_limits:
-                for lim in self._dynamic_route_limits[name]:
+            if endpoint_func_name in self._dynamic_route_limits:
+                for lim in self._dynamic_route_limits[endpoint_func_name]:
                     try:
                         dynamic_limits.extend(list(lim.with_request(request)))
                     except ValueError as e:
                         self.logger.error(
                             "failed to load ratelimit for view function %s (%s)",
-                            name,
+                            endpoint_func_name,
                             e,
                         )
 
         try:
             all_limits: List[Limit] = []
             if self._storage_dead and self._fallback_limiter:
-                if in_middleware and name in self.__marked_for_limiting:
+                if in_middleware and endpoint_func_name in self.__marked_for_limiting:
                     pass
                 else:
                     if self.__should_check_backend() and self._storage.check():
@@ -603,12 +613,15 @@ class Limiter:
                 )
                 if (
                     not route_limits
-                    and not (in_middleware and name in self.__marked_for_limiting)
+                    and not (
+                        in_middleware
+                        and endpoint_func_name in self.__marked_for_limiting
+                    )
                     or combined_defaults
                 ):
                     all_limits += list(itertools.chain(*self._default_limits))
             # actually check the limits, so far we've only computed the list of limits to check
-            self.__evaluate_limits(request, endpoint, all_limits)
+            self.__evaluate_limits(request, _endpoint_key, all_limits)
         except Exception as e:  # no qa
             if isinstance(e, RateLimitExceeded):
                 raise
