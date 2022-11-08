@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.1.7] - 2022-11-09
+
+### Added
+
+- Added ASGI middleware alternative (thanks @thentgesMindee)
+- Added support for custom cost per hit (thanks @nootr)
+- Added `key_style` parameter to choose between endpoint or url (thanks @thentgesMindee)
+
 ## [0.1.6] - 2022-08-20
 
 ### Added
