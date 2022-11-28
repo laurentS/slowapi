@@ -2,8 +2,8 @@
 
 A rate limiting library for Starlette and FastAPI adapted from [flask-limiter](http://github.com/alisaifee/flask-limiter).
 
-This packaage is used in smaller production setups, and seems to behave as expected. There might be some API changes
-when changing the code to be fully `async`, but we will notify users via appropriate `semver` version changes.
+This package is used in various production setups, handling millions of requests per month, and seems to behave as expected.
+There might be some API changes when changing the code to be fully `async`, but we will notify users via appropriate `semver` version changes.
 
 The documentation is on [read the docs](https://slowapi.readthedocs.io/en/latest/).
 
