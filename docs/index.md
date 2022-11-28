@@ -167,7 +167,7 @@ $ pytest
 To release a new version:
 
 - Update CHANGELOG.md
-- Bump the version number is `pyproject.toml`
+- Bump the version number in `pyproject.toml`
 - `poetry build`
 - `poetry publish`
 
