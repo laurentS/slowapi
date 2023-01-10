@@ -237,7 +237,7 @@ class Limiter:
             C.HEADERS_ENABLED, False
         )
         self._storage_options.update(self.get_app_config(C.STORAGE_OPTIONS, {}))
-        self._storage: Union[Storage, AsyncStorage] = storage_from_string(
+        self._storage = storage_from_string(
             self._storage_uri or self.get_app_config(C.STORAGE_URL, "memory://"),
             **self._storage_options,
         )
@@ -334,7 +334,11 @@ class Limiter:
         """
         Place holder until we find a better way to load config from app
         """
-        return self.app_config(key, default=default_value, cast=type(default_value))
+        return (
+            self.app_config(key, default=default_value, cast=type(default_value))
+            if default_value
+            else self.app_config(key, default=default_value)
+        )
 
     def __should_check_backend(self) -> bool:
         if self.__check_backend_count > MAX_BACKEND_CHECKS:
