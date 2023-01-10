@@ -23,10 +23,8 @@ from typing import (
 )
 
 from limits import RateLimitItem  # type: ignore
-from limits.aio.storage import Storage as AsyncStorage  # type: ignore
 from limits.errors import ConfigurationError  # type: ignore
 from limits.storage import MemoryStorage, storage_from_string  # type: ignore
-from limits.storage import Storage  # type: ignore
 from limits.strategies import STRATEGIES, RateLimiter  # type: ignore
 from starlette.config import Config
 from starlette.datastructures import MutableHeaders
