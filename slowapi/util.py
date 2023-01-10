@@ -10,6 +10,8 @@ def get_ipaddr(request: Request) -> str:
     """
     if "X_FORWARDED_FOR" in request.headers:
         return request.headers["X_FORWARDED_FOR"]
+    elif "X-Forwarded-For" in request.headers:
+        return request.headers["X-Forwarded-For"]
     else:
         return request.client.host or "127.0.0.1"
 
