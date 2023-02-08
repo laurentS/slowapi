@@ -8,7 +8,7 @@ click==7.1.1
 colorama==0.4.3; sys_platform == "win32"
 dataclasses==0.6; python_version < "3.7"
 fastapi==0.65.2
-future==0.18.2
+future==0.18.3
 hiro==0.5.1
 idna==2.9
 importlib-metadata==1.5.0; python_version < "3.8"
