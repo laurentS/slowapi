@@ -9,21 +9,22 @@ from starlette.middleware.base import (
 )
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.routing import BaseRoute, Match
+from starlette.routing import BaseRoute, Match, Mount
 from starlette.types import ASGIApp, Message, Scope, Receive, Send
-
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
 
 def _find_route_handler(
     routes: Iterable[BaseRoute], scope: Scope
 ) -> Optional[Callable]:
-    handler = None
     for route in routes:
+        if isinstance(route, Mount) and route.path in scope["path"]:
+            scope_copy = scope.copy()
+            scope_copy["path"] = scope_copy["path"].replace(route.path, "", 1)
+            return _find_route_handler(routes=route.routes, scope=scope_copy)
         match, _ = route.matches(scope)
         if match == Match.FULL and hasattr(route, "endpoint"):
-            handler = route.endpoint  # type: ignore
-    return handler
+            return route.endpoint  # type: ignore
 
 
 def _get_route_name(handler: Callable):
