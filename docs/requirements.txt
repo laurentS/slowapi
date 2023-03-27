@@ -36,7 +36,7 @@ pydantic==1.6.2
 pyparsing==2.4.6
 pytest==5.3.5
 pyyaml==5.4
-redis==3.4.1
+redis==4.3.6
 regex==2020.2.20
 requests==2.23.0
 six==1.14.0
