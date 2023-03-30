@@ -53,9 +53,9 @@ jobs:
 
     - name: Build distribution tarball and wheel
       # TODO: restrict this to master branch only
-      if: startsWith(github.ref, 'refs/tags')
       run: |
         poetry build
+
     - name: Publish distribution 📦 to Test PyPI
       # publish to testpypi on all commit just for testing this PR
       uses: pypa/gh-action-pypi-publish@release/v1
