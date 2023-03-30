@@ -1,6 +1,7 @@
 import time
 
 import hiro  # type: ignore
+import pytest  # type: ignore
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
@@ -10,8 +11,8 @@ from tests import TestSlowapi
 
 
 class TestDecorators(TestSlowapi):
-    def test_single_decorator_async(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_single_decorator_async(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         @limiter.limit("5/minute")
         async def t1(request: Request):
@@ -26,8 +27,8 @@ class TestDecorators(TestSlowapi):
             if i < 5:
                 assert response.text == "test"
 
-    def test_single_decorator_sync(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_single_decorator_sync(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         @limiter.limit("5/minute")
         def t1(request: Request):
@@ -42,8 +43,8 @@ class TestDecorators(TestSlowapi):
             if i < 5:
                 assert response.text == "test"
 
-    def test_shared_decorator(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_shared_decorator(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         shared_lim = limiter.shared_limit("5/minute", "somescope")
 
@@ -65,8 +66,8 @@ class TestDecorators(TestSlowapi):
         # the shared limit has already been hit via t1
         assert client.get("/t2").status_code == 429
 
-    def test_multiple_decorators(self):
-        app, limiter = self.build_starlette_app(key_func=get_ipaddr)
+    def test_multiple_decorators(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
 
         @limiter.limit("10 per minute", lambda: "test")
         @limiter.limit("5/minute")  # per ip as per default key_func
@@ -89,10 +90,8 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_multiple_decorators_with_headers(self):
-        app, limiter = self.build_starlette_app(
-            key_func=get_ipaddr, headers_enabled=True
-        )
+    def test_multiple_decorators_with_headers(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr, headers_enabled=True)
 
         @limiter.limit("10 per minute", lambda: "test")
         @limiter.limit("5/minute")  # per ip as per default key_func
@@ -116,8 +115,8 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_headers_no_breach(self):
-        app, limiter = self.build_starlette_app(
+    def test_headers_no_breach(self, build_starlette_app):
+        app, limiter = build_starlette_app(
             headers_enabled=True, key_func=get_remote_address
         )
 
@@ -149,8 +148,8 @@ class TestDecorators(TestSlowapi):
 
                 assert resp.headers.get("Retry-After") == str(1)
 
-    def test_headers_breach(self):
-        app, limiter = self.build_starlette_app(
+    def test_headers_breach(self, build_starlette_app):
+        app, limiter = build_starlette_app(
             headers_enabled=True, key_func=get_remote_address
         )
 
@@ -172,10 +171,10 @@ class TestDecorators(TestSlowapi):
                 )
                 assert resp.headers.get("Retry-After") == str(int(50))
 
-    def test_retry_after(self):
+    def test_retry_after(self, build_starlette_app):
         # FIXME: this test is not actually running!
 
-        app, limiter = self.build_starlette_app(
+        app, limiter = build_starlette_app(
             headers_enabled=True, key_func=get_remote_address
         )
 
@@ -193,8 +192,8 @@ class TestDecorators(TestSlowapi):
                 resp = cli.get("/t1")
                 assert resp.status_code == 200
 
-    def test_exempt_decorator(self):
-        app, limiter = self.build_starlette_app(
+    def test_exempt_decorator(self, build_starlette_app):
+        app, limiter = build_starlette_app(
             headers_enabled=True,
             key_func=get_remote_address,
             default_limits=["1/minute"],
@@ -235,8 +234,8 @@ class TestDecorators(TestSlowapi):
             assert resp2.status_code == 200
 
     # todo: more tests - see https://github.com/alisaifee/flask-limiter/blob/55df08f14143a7e918fc033067a494248ab6b0c5/tests/test_decorators.py#L187
-    def test_default_and_decorator_limit_merging(self):
-        app, limiter = self.build_starlette_app(
+    def test_default_and_decorator_limit_merging(self, build_starlette_app):
+        app, limiter = build_starlette_app(
             key_func=lambda: "test", default_limits=["10/minute"]
         )
 
@@ -258,4 +257,103 @@ class TestDecorators(TestSlowapi):
             assert (
                 cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
                 == 429
+            )
+
+    def test_cost(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
+
+        @limiter.limit("50/minute", cost=10)
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+
+        @limiter.limit("50/minute", cost=15)
+        async def t2(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t2", t2)
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1")
+            assert response.status_code == 200 if i < 5 else 429
+            if i < 5:
+                assert response.text == "test"
+            else:
+                assert "error" in response.json()
+
+            response = client.get("/t2")
+            assert response.status_code == 200 if i < 3 else 429
+            if i < 3:
+                assert response.text == "test"
+            else:
+                assert "error" in response.json()
+
+    def test_callable_cost(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
+
+        @limiter.limit("50/minute", cost=lambda request: int(request.headers["foo"]))
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+
+        @limiter.limit(
+            "50/minute", cost=lambda request: int(request.headers["foo"]) * 1.5
+        )
+        async def t2(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t2", t2)
+
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t1", headers={"foo": "10"})
+            assert response.status_code == 200 if i < 5 else 429
+            if i < 5:
+                assert response.text == "test"
+            else:
+                assert "error" in response.json()
+
+            response = client.get("/t2", headers={"foo": "5"})
+            assert response.status_code == 200 if i < 6 else 429
+            if i < 6:
+                assert response.text == "test"
+            else:
+                assert "error" in response.json()
+
+    @pytest.mark.parametrize(
+        "key_style",
+        ["url", "endpoint"],
+    )
+    def test_key_style(self, build_starlette_app, key_style):
+        app, limiter = build_starlette_app(key_func=lambda: "mock", key_style=key_style)
+
+        @limiter.limit("1/minute")
+        async def t1_func(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1/{my_param}", t1_func)
+
+        client = TestClient(app)
+        client.get("/t1/param_one")
+        second_call = client.get("/t1/param_two")
+        # with the "url" key_style, since the `my_param` value changed, the storage key is different
+        # meaning it should not raise any RateLimitExceeded error.
+        if key_style == "url":
+            assert second_call.status_code == 200
+            assert limiter._storage.get("LIMITER/mock//t1/param_one/1/1/minute") == 1
+            assert limiter._storage.get("LIMITER/mock//t1/param_two/1/1/minute") == 1
+        # However, with the `endpoint` key_style, it will use the function name (e.g: "t1_func")
+        # meaning it will raise a RateLimitExceeded error, because no matter the parameter value
+        # it will share the limitations.
+        elif key_style == "endpoint":
+            assert second_call.status_code == 429
+            # check that we counted 2 requests, even though we had a different value for "my_param"
+            assert (
+                limiter._storage.get(
+                    "LIMITER/mock/tests.test_starlette_extension.t1_func/1/1/minute"
+                )
+                == 2
             )

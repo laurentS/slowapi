@@ -65,3 +65,69 @@ limiter = Limiter(key_func=get_remote_address, storage_uri="redis://<host>:<port
 where the /n in the redis url is the database number. To use the default one, just drop the /n from the url.
 
 There are more examples in the [limits docs](https://limits.readthedocs.io/en/stable/storage.html) which is the library slowapi uses to manage storage.
+
+## Set a custom cost per hit
+
+Setting a custom cost per hit is useful to throttle requests based on something else than the request count.
+
+Define a function which takes a request as parameter and returns a cost and pass it to the `limit` decorator:
+
+```python
+    def get_hit_cost(request: Request) -> int:
+        return len(request)
+
+    @app.route("/someroute")
+    @limiter.limit("100/minute", cost=get_hit_cost)
+    def t(request: Request):
+        return PlainTextResponse("I'm limited by the request size")
+```
+
+## WSGI vs ASGI Middleware
+
+`SlowAPIMiddleware` inheriting from Starlette's BaseHTTPMiddleware, you can find an alternative ASGI Middleware `SlowAPIASGIMiddleware`.  
+A few reasons to choose the ASGI middleware over the HTTP one are:
+- Starlette [is probably going to deprecate BaseHTTPMiddleware](https://github.com/encode/starlette/issues/1678)
+- ASGI middlewares [are more performant than WSGI ones](https://github.com/tiangolo/fastapi/issues/2241)
+- built-in support for asynchronous exception handlers
+- ...
+
+
+Both middlewares are added to your application the same way:
+```python
+app = Starlette() # or FastAPI()
+app.add_middleware(SlowAPIMiddleware)
+```
+or
+```python
+app = Starlette() # or FastAPI()
+app.add_middleware(SlowAPIASGIMiddleware)
+```
+
+## Use view function's name instead of full endpoint as part of the storage key
+
+Let's use this route as an example:
+```python
+@app.route("/some_route/{some_param}")
+def my_func(some_param):
+    ...
+```
+
+```python
+limiter = Limiter(key_func=lambda: "mock", default_limits=["1/minute"], key_style="url")
+```
+
+When initializing the Limiter object with `key_style="url"`, it will use the full endpoint url as part of the storage key.
+
+When calling the `/some_route/my_param` endpoint would result with a key shaped like: `LIMITER/mock//some_route/my_param/1/1/minute`.
+
+> This means, that if the route contains some URL parameter, calling the endpoint with different parameters won't share the limitations.
+
+```python
+limiter = Limiter(key_func=lambda: "mock", default_limits=["1/minute"], key_style="endpoint")
+```
+
+When initializing the Limiter object with `key_style="endpoint"`, it will use the function name as part of the storage key.
+
+When calling the `/some_route/my_param` endpoint would result with a key shaped like: `LIMITER/mock/{module}.my_func/1/1/minute`
+
+> This means, that if the route contains some URL parameter, calling the endpoint with different parameters will still share the limitations, since the view function is the same.

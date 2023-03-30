@@ -25,11 +25,12 @@ from typing import (
 from limits import RateLimitItem  # type: ignore
 from limits.errors import ConfigurationError  # type: ignore
 from limits.storage import MemoryStorage, storage_from_string  # type: ignore
-from limits.storage import Storage  # type: ignore
 from limits.strategies import STRATEGIES, RateLimiter  # type: ignore
 from starlette.config import Config
+from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from typing_extensions import Literal
 
 from .errors import RateLimitExceeded
 from .wrappers import Limit, LimitGroup
@@ -121,6 +122,7 @@ class Limiter:
     * **enabled**: set to False to deactivate the limiter (default: True)
     * **config_filename**: name of the config file for Starlette from which to load settings
      for the rate limiter. Defaults to ".env".
+    * **key_style**: set to "url" to use the url, "endpoint" to use the view_func
     """
 
     def __init__(
@@ -141,6 +143,7 @@ class Limiter:
         key_prefix: str = "",
         enabled: bool = True,
         config_filename: Optional[str] = None,
+        key_style: Literal["endpoint", "url"] = "url",
     ) -> None:
         """
         Configure the rate limiter at app level
@@ -175,12 +178,13 @@ class Limiter:
 
         self._key_func = key_func
         self._key_prefix = key_prefix
+        self._key_style = key_style
 
         for limit in set(default_limits):
             self._default_limits.extend(
                 [
                     LimitGroup(
-                        limit, self._key_func, None, False, None, None, None, False
+                        limit, self._key_func, None, False, None, None, None, 1, False
                     )
                 ]
             )
@@ -188,7 +192,15 @@ class Limiter:
             self._application_limits.extend(
                 [
                     LimitGroup(
-                        limit, self._key_func, "global", False, None, None, None, False
+                        limit,
+                        self._key_func,
+                        "global",
+                        False,
+                        None,
+                        None,
+                        None,
+                        1,
+                        False,
                     )
                 ]
             )
@@ -196,7 +208,7 @@ class Limiter:
             self._in_memory_fallback.extend(
                 [
                     LimitGroup(
-                        limit, self._key_func, None, False, None, None, None, False
+                        limit, self._key_func, None, False, None, None, None, 1, False
                     )
                 ]
             )
@@ -223,7 +235,7 @@ class Limiter:
             C.HEADERS_ENABLED, False
         )
         self._storage_options.update(self.get_app_config(C.STORAGE_OPTIONS, {}))
-        self._storage: Storage = storage_from_string(
+        self._storage = storage_from_string(
             self._storage_uri or self.get_app_config(C.STORAGE_URL, "memory://"),
             **self._storage_options,
         )
@@ -261,7 +273,15 @@ class Limiter:
         if not self._application_limits and app_limits:
             self._application_limits = [
                 LimitGroup(
-                    app_limits, self._key_func, "global", False, None, None, None, False
+                    app_limits,
+                    self._key_func,
+                    "global",
+                    False,
+                    None,
+                    None,
+                    None,
+                    1,
+                    False,
                 )
             ]
 
@@ -271,7 +291,7 @@ class Limiter:
         if not self._default_limits and conf_limits:
             self._default_limits = [
                 LimitGroup(
-                    conf_limits, self._key_func, None, False, None, None, None, False
+                    conf_limits, self._key_func, None, False, None, None, None, 1, False
                 )
             ]
         fallback_enabled = self.get_app_config(C.IN_MEMORY_FALLBACK_ENABLED, False)
@@ -288,6 +308,7 @@ class Limiter:
                     None,
                     None,
                     None,
+                    1,
                     False,
                 )
             ]
@@ -311,7 +332,11 @@ class Limiter:
         """
         Place holder until we find a better way to load config from app
         """
-        return self.app_config(key, default=default_value, cast=type(default_value))
+        return (
+            self.app_config(key, default=default_value, cast=type(default_value))
+            if default_value
+            else self.app_config(key, default=default_value)
+        )
 
     def __should_check_backend(self) -> bool:
         if self.__check_backend_count > MAX_BACKEND_CHECKS:
@@ -338,6 +363,9 @@ class Limiter:
         The backend that keeps track of consumption of endpoints vs limits
         """
         if self._storage_dead and self._in_memory_fallback_enabled:
+            assert (
+                self._fallback_limiter
+            ), "Fallback limiter is needed when in memory fallback is enabled"
             return self._fallback_limiter
         else:
             return self._limiter
@@ -395,6 +423,58 @@ class Limiter:
                     raise
         return response
 
+    def _inject_asgi_headers(
+        self, headers: MutableHeaders, current_limit: Tuple[RateLimitItem, List[str]]
+    ) -> MutableHeaders:
+        """
+        Injects 'X-RateLimit-Reset', 'X-RateLimit-Remaining', 'X-RateLimit-Limit'
+        and 'Retry-After' headers into :headers parameter if needed.
+
+        Basically the same as _inject_headers, but without access to the Response object.
+        -> supports ASGI Middlewares.
+        """
+        if self.enabled and self._headers_enabled and current_limit is not None:
+            try:
+                window_stats: Tuple[int, int] = self.limiter.get_window_stats(
+                    current_limit[0], *current_limit[1]
+                )
+                reset_in = 1 + window_stats[0]
+                headers[self._header_mapping[HEADERS.LIMIT]] = str(
+                    current_limit[0].amount
+                )
+                headers[self._header_mapping[HEADERS.REMAINING]] = str(window_stats[1])
+                headers[self._header_mapping[HEADERS.RESET]] = str(reset_in)
+
+                # response may have an existing retry after
+                existing_retry_after_header = headers.get("Retry-After")
+
+                if existing_retry_after_header is not None:
+                    reset_in = max(
+                        self._determine_retry_time(existing_retry_after_header),
+                        reset_in,
+                    )
+
+                headers[self._header_mapping[HEADERS.RETRY_AFTER]] = (
+                    formatdate(reset_in)
+                    if self._retry_after == "http-date"
+                    else str(int(reset_in - time.time()))
+                )
+            except Exception:
+                if self._in_memory_fallback and not self._storage_dead:
+                    self.logger.warning(
+                        "Rate limit storage unreachable - falling back to"
+                        " in-memory storage"
+                    )
+                    self._storage_dead = True
+                    headers = self._inject_asgi_headers(headers, current_limit)
+                if self._swallow_errors:
+                    self.logger.exception(
+                        "Failed to update rate limit headers. Swallowing error"
+                    )
+                else:
+                    raise
+        return headers
+
     def __evaluate_limits(
         self, request: Request, endpoint: str, limits: List[Limit]
     ) -> None:
@@ -420,7 +500,9 @@ class Limiter:
                     args = [self._key_prefix] + args
                 if not limit_for_header or lim.limit < limit_for_header[0]:
                     limit_for_header = (lim.limit, args)
-                if not self.limiter.hit(lim.limit, *args):
+
+                cost = lim.cost(request) if callable(lim.cost) else lim.cost
+                if not self.limiter.hit(lim.limit, *args, cost=cost):
                     self.logger.warning(
                         "ratelimit %s (%s) exceeded at endpoint: %s",
                         lim.limit,
@@ -464,24 +546,26 @@ class Limiter:
     def _check_request_limit(
         self,
         request: Request,
-        endpoint_func: Callable[..., Any],
+        endpoint_func: Optional[Callable[..., Any]],
         in_middleware: bool = True,
     ) -> None:
         """
         Determine if the request is within limits
         """
-        endpoint = request["path"] or ""
-        # view_func = current_app.view_functions.get(endpoint, None)
+        endpoint_url = request["path"] or ""
         view_func = endpoint_func
 
-        name = "%s.%s" % (view_func.__module__, view_func.__name__) if view_func else ""
+        endpoint_func_name = (
+            f"{view_func.__module__}.{view_func.__name__}" if view_func else ""
+        )
+        _endpoint_key = endpoint_url if self._key_style == "url" else endpoint_func_name
         # cases where we don't need to check the limits
         if (
-            not endpoint
+            not _endpoint_key
             or not self.enabled
             # or we are sending a static file
             # or view_func == current_app.send_static_file
-            or name in self._exempt_routes
+            or endpoint_func_name in self._exempt_routes
             or any(fn() for fn in self._request_filters)
         ):
             return
@@ -489,23 +573,27 @@ class Limiter:
         dynamic_limits: List[Limit] = []
 
         if not in_middleware:
-            limits = self._route_limits[name] if name in self._route_limits else []
+            limits = (
+                self._route_limits[endpoint_func_name]
+                if endpoint_func_name in self._route_limits
+                else []
+            )
             dynamic_limits = []
-            if name in self._dynamic_route_limits:
-                for lim in self._dynamic_route_limits[name]:
+            if endpoint_func_name in self._dynamic_route_limits:
+                for lim in self._dynamic_route_limits[endpoint_func_name]:
                     try:
                         dynamic_limits.extend(list(lim.with_request(request)))
                     except ValueError as e:
                         self.logger.error(
                             "failed to load ratelimit for view function %s (%s)",
-                            name,
+                            endpoint_func_name,
                             e,
                         )
 
         try:
             all_limits: List[Limit] = []
             if self._storage_dead and self._fallback_limiter:
-                if in_middleware and name in self.__marked_for_limiting:
+                if in_middleware and endpoint_func_name in self.__marked_for_limiting:
                     pass
                 else:
                     if self.__should_check_backend() and self._storage.check():
@@ -527,12 +615,15 @@ class Limiter:
                 )
                 if (
                     not route_limits
-                    and not (in_middleware and name in self.__marked_for_limiting)
+                    and not (
+                        in_middleware
+                        and endpoint_func_name in self.__marked_for_limiting
+                    )
                     or combined_defaults
                 ):
                     all_limits += list(itertools.chain(*self._default_limits))
             # actually check the limits, so far we've only computed the list of limits to check
-            self.__evaluate_limits(request, endpoint, all_limits)
+            self.__evaluate_limits(request, _endpoint_key, all_limits)
         except Exception as e:  # no qa
             if isinstance(e, RateLimitExceeded):
                 raise
@@ -559,9 +650,9 @@ class Limiter:
         methods: Optional[List[str]] = None,
         error_message: Optional[str] = None,
         exempt_when: Optional[Callable[..., bool]] = None,
+        cost: Union[int, Callable[..., int]] = 1,
         override_defaults: bool = True,
     ) -> Callable[..., Any]:
-
         _scope = scope if shared else None
 
         def decorator(func: Callable[..., Response]):
@@ -578,6 +669,7 @@ class Limiter:
                     methods,
                     error_message,
                     exempt_when,
+                    cost,
                     override_defaults,
                 )
             else:
@@ -591,6 +683,7 @@ class Limiter:
                             methods,
                             error_message,
                             exempt_when,
+                            cost,
                             override_defaults,
                         )
                     )
@@ -691,6 +784,7 @@ class Limiter:
         methods: Optional[List[str]] = None,
         error_message: Optional[str] = None,
         exempt_when: Optional[Callable[..., bool]] = None,
+        cost: Union[int, Callable[..., int]] = 1,
         override_defaults: bool = True,
     ) -> Callable:
         """
@@ -708,6 +802,7 @@ class Limiter:
          error message used in the response.
         * **exempt_when**: function returning a boolean indicating whether to exempt
         the route from the limit
+        * **cost**: integer (or callable that returns one) which is the cost of a hit
         * **override_defaults**: whether to override the default limits (default: True)
         """
         return self.__limit_decorator(
@@ -717,6 +812,7 @@ class Limiter:
             methods=methods,
             error_message=error_message,
             exempt_when=exempt_when,
+            cost=cost,
             override_defaults=override_defaults,
         )
 
@@ -727,6 +823,7 @@ class Limiter:
         key_func: Optional[Callable[..., str]] = None,
         error_message: Optional[str] = None,
         exempt_when: Optional[Callable[..., bool]] = None,
+        cost: Union[int, Callable[..., int]] = 1,
         override_defaults: bool = True,
     ) -> Callable:
         """
@@ -746,6 +843,7 @@ class Limiter:
          error message used in the response.
         * **exempt_when**: function returning a boolean indicating whether to exempt
         the route from the limit
+        * **cost**: integer (or callable that returns one) which is the cost of a hit
         * **override_defaults**: whether to override the default limits (default: True)
         """
         return self.__limit_decorator(
@@ -755,6 +853,7 @@ class Limiter:
             scope,
             error_message=error_message,
             exempt_when=exempt_when,
+            cost=cost,
             override_defaults=override_defaults,
         )
 
