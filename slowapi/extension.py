@@ -653,7 +653,6 @@ class Limiter:
         cost: Union[int, Callable[..., int]] = 1,
         override_defaults: bool = True,
     ) -> Callable[..., Any]:
-
         _scope = scope if shared else None
 
         def decorator(func: Callable[..., Response]):
