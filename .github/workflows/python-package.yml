@@ -10,7 +10,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build-and-publish:
+  tests:
 
     runs-on: ubuntu-latest
     strategy:
@@ -23,14 +23,17 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install build dependencies for requests in python 3.9
       # it's not clear why this is needed only for this version of python
       run: sudo apt-get install libxml2-dev libxslt-dev
+
     - name: Install Poetry
       uses: snok/install-poetry@v1
       with:
         # Version of Poetry to use
-        version: 1.2.2
+        version: 1.4.1
+
     - name: Install dependencies
       run: |
         poetry install
@@ -50,6 +53,22 @@ jobs:
     - name: Generate coverage report
       run: |
         poetry run coverage report
+
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        # Version of Poetry to use
+        version: 1.4.1
 
     - name: Build distribution tarball and wheel
       # TODO: restrict this to master branch only
