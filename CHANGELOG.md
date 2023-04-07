@@ -1,5 +1,14 @@
 # Change Log
 
+## [0.1.8] - 2023-04-07
+
+### Added
+
+- Loosen restriction on the limits dependency (thanks @sanders41)
+- Fix redis install error (thanks @sanders41)
+- Add Python 3.11 support (thanks @sanders41)
+
+
 ## [0.1.7] - 2022-11-09
 
 ### Added
