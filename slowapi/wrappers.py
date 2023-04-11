@@ -35,6 +35,10 @@ class Limit(object):
     def is_exempt(self, request: Request) -> bool:
         """
         Check if the limit is exempt.
+
+        ** parameter **
+        * **request**: the request object
+
         Return True to exempt the route from the limit.
         """
         if self.exempt_when is None:
