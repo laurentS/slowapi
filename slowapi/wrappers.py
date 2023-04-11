@@ -2,6 +2,7 @@ import inspect
 from typing import Callable, Iterator, List, Optional, Union
 
 from limits import RateLimitItem, parse_many  # type: ignore
+from starlette.requests import Request
 
 
 class Limit(object):
@@ -31,13 +32,18 @@ class Limit(object):
         self.cost = cost
         self.override_defaults = override_defaults
 
-    @property
-    def is_exempt(self) -> bool:
+    def is_exempt(self, request: Request) -> bool:
         """
         Check if the limit is exempt.
         Return True to exempt the route from the limit.
         """
-        return self.exempt_when() if self.exempt_when is not None else False
+        if self.exempt_when is None:
+            return False
+        params = inspect.signature(self.exempt_when).parameters
+        param_len = len(params)
+        if param_len == 1:
+            return self.exempt_when(request)
+        return self.exempt_when()
 
     @property
     def scope(self) -> str:

@@ -482,7 +482,7 @@ class Limiter:
         limit_for_header = None
         for lim in limits:
             limit_scope = lim.scope or endpoint
-            if lim.is_exempt:
+            if lim.is_exempt(request):
                 continue
             if lim.methods is not None and request.method.lower() not in lim.methods:
                 continue
@@ -699,11 +699,9 @@ class Limiter:
             else:
                 self._route_limits.setdefault(name, []).extend(static_limits)
 
-            connection_type: Optional[str] = None
             sig = inspect.signature(func)
             for idx, parameter in enumerate(sig.parameters.values()):
                 if parameter.name == "request" or parameter.name == "websocket":
-                    connection_type = parameter.name
                     break
             else:
                 raise Exception(
