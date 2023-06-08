@@ -778,7 +778,7 @@ class Limiter:
 
     def limit(
         self,
-        limit_value: Union[str, Callable[[str], str]],
+        limit_value: StrOrCallableStr,
         key_func: Optional[Callable[..., str]] = None,
         per_method: bool = False,
         methods: Optional[List[str]] = None,
