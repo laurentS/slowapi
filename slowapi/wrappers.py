@@ -32,7 +32,7 @@ class Limit(object):
         self.cost = cost
         self.override_defaults = override_defaults
 
-    def is_exempt(self, request: Request) -> bool:
+    def is_exempt(self, request: Optional[Request] = None) -> bool:
         """
         Check if the limit is exempt.
 
@@ -45,7 +45,7 @@ class Limit(object):
             return False
         params = inspect.signature(self.exempt_when).parameters
         param_len = len(params)
-        if param_len == 1:
+        if param_len == 1 and request:
             return self.exempt_when(request)
         return self.exempt_when()
 
