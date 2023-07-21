@@ -818,7 +818,7 @@ class Limiter:
 
     def shared_limit(
         self,
-        limit_value: Union[str, Callable[[str], str]],
+        limit_value: StrOrCallableStr,
         scope: StrOrCallableStr,
         key_func: Optional[Callable[..., str]] = None,
         error_message: Optional[str] = None,
