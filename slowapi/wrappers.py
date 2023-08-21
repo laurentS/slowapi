@@ -29,6 +29,7 @@ class Limit(object):
         self.methods = methods
         self.error_message = error_message
         self.exempt_when = exempt_when
+        self._exempt_when_takes_request = len(inspect.signature(self.exempt_when).parameters) == 1
         self.cost = cost
         self.override_defaults = override_defaults
 
@@ -43,9 +44,7 @@ class Limit(object):
         """
         if self.exempt_when is None:
             return False
-        params = inspect.signature(self.exempt_when).parameters
-        param_len = len(params)
-        if param_len == 1 and request:
+        if self._exempt_when_takes_request and request:
             return self.exempt_when(request)
         return self.exempt_when()
 
