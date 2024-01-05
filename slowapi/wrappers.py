@@ -30,7 +30,8 @@ class Limit(object):
         self.error_message = error_message
         self.exempt_when = exempt_when
         self._exempt_when_takes_request = (
-            len(inspect.signature(self.exempt_when).parameters) == 1
+            self.exempt_when
+            and len(inspect.signature(self.exempt_when).parameters) == 1
         )
         self.cost = cost
         self.override_defaults = override_defaults
