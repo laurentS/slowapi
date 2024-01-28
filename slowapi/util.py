@@ -81,13 +81,17 @@ def add_request_signature(func: Callable):
         if name not in param_names:
             func.req = name
 
-            req = Parameter(name=name, kind=Parameter.POSITIONAL_OR_KEYWORD, annotation=Request)
+            req = Parameter(
+                name=name, kind=Parameter.POSITIONAL_OR_KEYWORD, annotation=Request
+            )
             params.insert(0, req)
             sig = sig.replace(parameters=params)
             func.__signature__ = sig
         else:
             fname = f"{func.__module__}.{func.__name__}"
-            raise Exception(f"Remove 'request' argument from function {fname}"
-                            f" or add [request : starlette.Request] manually.")
+            raise Exception(
+                f"Remove 'request' argument from function {fname}"
+                f" or add [request : starlette.Request] manually."
+            )
 
     return wrapper
