@@ -71,7 +71,7 @@ def add_request_signature(func: Callable):
     params = list(sig.parameters.values())
 
     rq = get_request_param(func)
-    if len(rq) == 1:
+    if len(rq) >= 1:
         if not hasattr(func, "scrap_req"):  # Ignore if already set
             func.scrap_req = False
     else:
