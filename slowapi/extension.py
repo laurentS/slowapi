@@ -157,7 +157,9 @@ class Limiter:
 
         dotenv_file_exists = os.path.isfile(".env")
         self.app_config = Config(
-            ".env" if dotenv_file_exists and config_filename is None else config_filename
+            ".env"
+            if dotenv_file_exists and config_filename is None
+            else config_filename
         )
 
         self.enabled = enabled
