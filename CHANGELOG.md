@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.1.9] - 2024-02-05
+
+### Added
+
+- Fix `limit_value` typehint in `limit()` function (thanks @PookieBuns)
+- Fix `limit_value` typehint in `shared_limit()` function (thanks @aberlioz)
+- Only pass `".env"` to starlette `Config` if `".env"` file exists (thanks @daniellok-db)
+
 ## [0.1.8] - 2023-04-07
 
 ### Added
