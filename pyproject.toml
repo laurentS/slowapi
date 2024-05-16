@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "slowapi"
-version = "0.1.7"
+version = "0.1.9"
 description = "A rate limiting extension for Starlette and Fastapi"
 authors = ["Laurent Savaete <laurent@where.tf>"]
 license = "MIT"
@@ -15,7 +15,7 @@ include = ["slowapi/py.typed"]
 
 [tool.poetry.dependencies]
 python = ">=3.7,<4.0"
-limits = "^2.3"
+limits = ">=2.3"
 redis = {version = "^3.4.1", optional = true}
 
 [tool.poetry.dev-dependencies]
