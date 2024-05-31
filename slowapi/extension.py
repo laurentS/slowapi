@@ -6,6 +6,7 @@ import functools
 import inspect
 import itertools
 import logging
+import os
 import time
 from datetime import datetime
 from email.utils import formatdate, parsedate_to_datetime
@@ -154,8 +155,11 @@ class Limiter:
 
         self.logger = logging.getLogger("slowapi")
 
+        dotenv_file_exists = os.path.isfile(".env")
         self.app_config = Config(
-            config_filename if config_filename is not None else ".env"
+            ".env"
+            if dotenv_file_exists and config_filename is None
+            else config_filename
         )
 
         self.enabled = enabled
@@ -816,7 +820,7 @@ class Limiter:
 
     def shared_limit(
         self,
-        limit_value: Union[str, Callable[[str], str]],
+        limit_value: StrOrCallableStr,
         scope: StrOrCallableStr,
         key_func: Optional[Callable[..., str]] = None,
         error_message: Optional[str] = None,
