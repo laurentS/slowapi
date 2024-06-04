@@ -632,7 +632,7 @@ class Limiter:
             if isinstance(e, RateLimitExceeded):
                 raise
             if self._in_memory_fallback_enabled and not self._storage_dead:
-                self.logger.warn(
+                self.logger.warning(
                     "Rate limit storage unreachable - falling back to"
                     " in-memory storage"
                 )
