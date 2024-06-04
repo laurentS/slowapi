@@ -4,7 +4,7 @@
 
 ### Changed
 
-- Breaking: allow usage of the request object in the except_when function (thanks @colin99d)
+- Breaking change: allow usage of the request object in the except_when function (thanks @colin99d)
 
 ## [0.1.9] - 2024-02-05
 
