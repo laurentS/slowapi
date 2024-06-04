@@ -518,7 +518,9 @@ class Limiter:
                     break
             else:
                 self.logger.error(
-                    "Skipping limit: %s. Empty value found in parameters.", lim.limit
+                    "Skipping limit: %s at endpoint: %s. Empty value found in parameters.",
+                    lim.limit,
+                    limit_scope
                 )
                 continue
         # keep track of which limit was hit, to be picked up for the response header
