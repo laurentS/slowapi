@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.1.10] - 2024-06-04
+
+### Changed
+
+- Breaking: allow usage of the request object in the except_when function (thanks @colin99d)
+
 ## [0.1.9] - 2024-02-05
 
 ### Added
