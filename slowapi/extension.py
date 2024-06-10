@@ -1,6 +1,7 @@
 """
 The starlette extension to rate-limit requests
 """
+
 import asyncio
 import functools
 import inspect
@@ -10,36 +11,34 @@ import os
 import time
 from datetime import datetime
 from email.utils import formatdate, parsedate_to_datetime
-from functools import wraps
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar
 
-from limits import RateLimitItem  # type: ignore
-from limits.errors import ConfigurationError  # type: ignore
-from limits.storage import MemoryStorage, storage_from_string  # type: ignore
-from limits.strategies import STRATEGIES, RateLimiter  # type: ignore
+from limits import RateLimitItem
+from limits.errors import ConfigurationError
+from limits.storage import MemoryStorage, storage_from_string
+from limits.strategies import STRATEGIES, RateLimiter
+from starlette.applications import Starlette
 from starlette.config import Config
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from typing_extensions import Literal
+from typing_extensions import Literal, ParamSpec
 
 from .errors import RateLimitExceeded
+from .types import (
+    Cost,
+    ErrorMessage,
+    ExemptWhen,
+    KeyFn,
+    LimitProvider,
+    Scope,
+    is_request_fn,
+)
 from .wrappers import Limit, LimitGroup
 
 # used to annotate get_app_config method
 T = TypeVar("T")
-# Define an alias for the most commonly used type
-StrOrCallableStr = Union[str, Callable[..., str]]
+P = ParamSpec("P")
 
 
 class C:
@@ -129,16 +128,16 @@ class Limiter:
     def __init__(
         self,
         # app: Starlette = None,
-        key_func: Callable[..., str],
-        default_limits: List[StrOrCallableStr] = [],
-        application_limits: List[StrOrCallableStr] = [],
+        key_func: KeyFn,
+        default_limits: List[LimitProvider] = [],
+        application_limits: List[LimitProvider] = [],
         headers_enabled: bool = False,
         strategy: Optional[str] = None,
         storage_uri: Optional[str] = None,
         storage_options: Dict[str, str] = {},
         auto_check: bool = True,
         swallow_errors: bool = False,
-        in_memory_fallback: List[StrOrCallableStr] = [],
+        in_memory_fallback: List[LimitProvider] = [],
         in_memory_fallback_enabled: bool = False,
         retry_after: Optional[str] = None,
         key_prefix: str = "",
@@ -271,7 +270,7 @@ class Limiter:
             C.HEADER_RETRY_AFTER_VALUE
         )
         self._key_prefix = self._key_prefix or self.get_app_config(C.KEY_PREFIX)
-        app_limits: Optional[StrOrCallableStr] = self.get_app_config(
+        app_limits: Optional[LimitProvider] = self.get_app_config(
             C.APPLICATION_LIMITS, None
         )
         if not self._application_limits and app_limits:
@@ -289,7 +288,7 @@ class Limiter:
                 )
             ]
 
-        conf_limits: Optional[StrOrCallableStr] = self.get_app_config(
+        conf_limits: Optional[LimitProvider] = self.get_app_config(
             C.DEFAULT_LIMITS, None
         )
         if not self._default_limits and conf_limits:
@@ -299,7 +298,7 @@ class Limiter:
                 )
             ]
         fallback_enabled = self.get_app_config(C.IN_MEMORY_FALLBACK_ENABLED, False)
-        fallback_limits: Optional[StrOrCallableStr] = self.get_app_config(
+        fallback_limits: Optional[LimitProvider] = self.get_app_config(
             C.IN_MEMORY_FALLBACK, None
         )
         if not self._in_memory_fallback and fallback_limits:
@@ -325,14 +324,14 @@ class Limiter:
             self._fallback_storage = MemoryStorage()
             self._fallback_limiter = STRATEGIES[strategy](self._fallback_storage)
 
-    def slowapi_startup(self) -> None:
+    def slowapi_startup(self, app: Starlette) -> None:
         """
         Starlette startup event handler that links the app with the Limiter instance.
         """
         app.state.limiter = self  # type: ignore
         app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
 
-    def get_app_config(self, key: str, default_value: T = None) -> T:
+    def get_app_config(self, key: str, default_value: Optional[T] = None) -> T:
         """
         Place holder until we find a better way to load config from app
         """
@@ -485,7 +484,7 @@ class Limiter:
         failed_limit = None
         limit_for_header = None
         for lim in limits:
-            limit_scope = lim.scope or endpoint
+            limit_scope = lim.scope(request) or endpoint
             if lim.is_exempt:
                 continue
             if lim.methods is not None and request.method.lower() not in lim.methods:
@@ -493,7 +492,7 @@ class Limiter:
             if lim.per_method:
                 limit_scope += ":%s" % request.method
 
-            if "request" in inspect.signature(lim.key_func).parameters.keys():
+            if is_request_fn(lim.key_func):
                 limit_key = lim.key_func(request)
             else:
                 limit_key = lim.key_func()
@@ -586,7 +585,7 @@ class Limiter:
             if endpoint_func_name in self._dynamic_route_limits:
                 for lim in self._dynamic_route_limits[endpoint_func_name]:
                     try:
-                        dynamic_limits.extend(list(lim.with_request(request)))
+                        dynamic_limits.extend(lim.resolve(request))
                     except ValueError as e:
                         self.logger.error(
                             "failed to load ratelimit for view function %s (%s)",
@@ -605,11 +604,19 @@ class Limiter:
                         self._storage_dead = False
                         self.__check_backend_count = 0
                     else:
-                        all_limits = list(itertools.chain(*self._in_memory_fallback))
+                        all_limits = list(
+                            itertools.chain(
+                                *(lim.resolve() for lim in self._in_memory_fallback)
+                            )
+                        )
             if not all_limits:
                 route_limits: List[Limit] = limits + dynamic_limits
                 all_limits = (
-                    list(itertools.chain(*self._application_limits))
+                    list(
+                        itertools.chain(
+                            *(lim.resolve() for lim in self._application_limits)
+                        )
+                    )
                     if in_middleware
                     else []
                 )
@@ -625,7 +632,11 @@ class Limiter:
                     )
                     or combined_defaults
                 ):
-                    all_limits += list(itertools.chain(*self._default_limits))
+                    all_limits += list(
+                        itertools.chain(
+                            *(lim.resolve() for lim in self._default_limits)
+                        )
+                    )
             # actually check the limits, so far we've only computed the list of limits to check
             self.__evaluate_limits(request, _endpoint_key, all_limits)
         except Exception as e:  # no qa
@@ -646,20 +657,20 @@ class Limiter:
 
     def __limit_decorator(
         self,
-        limit_value: StrOrCallableStr,
-        key_func: Optional[Callable[..., str]] = None,
+        limit_value: LimitProvider,
+        key_func: Optional[KeyFn] = None,
         shared: bool = False,
-        scope: Optional[StrOrCallableStr] = None,
+        scope: Optional[Scope] = None,
         per_method: bool = False,
         methods: Optional[List[str]] = None,
-        error_message: Optional[str] = None,
-        exempt_when: Optional[Callable[..., bool]] = None,
-        cost: Union[int, Callable[..., int]] = 1,
+        error_message: Optional[ErrorMessage] = None,
+        exempt_when: Optional[ExemptWhen] = None,
+        cost: Cost = 1,
         override_defaults: bool = True,
-    ) -> Callable[..., Any]:
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]:
         _scope = scope if shared else None
 
-        def decorator(func: Callable[..., Response]):
+        def decorator(func: Callable[P, T]) -> Callable[P, T]:
             keyfunc = key_func or self._key_func
             name = f"{func.__module__}.{func.__name__}"
             dynamic_limit = None
@@ -689,7 +700,7 @@ class Limiter:
                             exempt_when,
                             cost,
                             override_defaults,
-                        )
+                        ).resolve()
                     )
                 except ValueError as e:
                     self.logger.error(
@@ -717,7 +728,7 @@ class Limiter:
             if asyncio.iscoroutinefunction(func):
                 # Handle async request/response functions.
                 @functools.wraps(func)
-                async def async_wrapper(*args: Any, **kwargs: Any) -> Response:
+                async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
                     # get the request object from the decorated endpoint function
                     if self.enabled:
                         request = kwargs.get("request", args[idx] if args else None)
@@ -731,12 +742,13 @@ class Limiter:
                         ):
                             self._check_request_limit(request, func, False)
                             request.state._rate_limiting_complete = True
-                    response = await func(*args, **kwargs)  # type: ignore
+                    response: T = await func(*args, **kwargs)
                     if self.enabled:
                         if not isinstance(response, Response):
                             # get the response object from the decorated endpoint function
                             self._inject_headers(
-                                kwargs.get("response"), request.state.view_rate_limit  # type: ignore
+                                kwargs.get("response"),  # type: ignore
+                                request.state.view_rate_limit,
                             )
                         else:
                             self._inject_headers(
@@ -744,12 +756,12 @@ class Limiter:
                             )
                     return response
 
-                return async_wrapper
+                return async_wrapper  # type: ignore
 
             else:
                 # Handle sync request/response functions.
                 @functools.wraps(func)
-                def sync_wrapper(*args: Any, **kwargs: Any) -> Response:
+                def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
                     # get the request object from the decorated endpoint function
                     if self.enabled:
                         request = kwargs.get("request", args[idx] if args else None)
@@ -768,7 +780,8 @@ class Limiter:
                         if not isinstance(response, Response):
                             # get the response object from the decorated endpoint function
                             self._inject_headers(
-                                kwargs.get("response"), request.state.view_rate_limit  # type: ignore
+                                kwargs.get("response"),  # type: ignore
+                                request.state.view_rate_limit,
                             )
                         else:
                             self._inject_headers(
@@ -782,15 +795,15 @@ class Limiter:
 
     def limit(
         self,
-        limit_value: StrOrCallableStr,
-        key_func: Optional[Callable[..., str]] = None,
+        limit_value: LimitProvider,
+        key_func: Optional[KeyFn] = None,
         per_method: bool = False,
         methods: Optional[List[str]] = None,
-        error_message: Optional[str] = None,
-        exempt_when: Optional[Callable[..., bool]] = None,
-        cost: Union[int, Callable[..., int]] = 1,
+        error_message: Optional[ErrorMessage] = None,
+        exempt_when: Optional[ExemptWhen] = None,
+        cost: Cost = 1,
         override_defaults: bool = True,
-    ) -> Callable:
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]:
         """
         Decorator to be used for rate limiting individual routes.
 
@@ -822,14 +835,14 @@ class Limiter:
 
     def shared_limit(
         self,
-        limit_value: StrOrCallableStr,
-        scope: StrOrCallableStr,
-        key_func: Optional[Callable[..., str]] = None,
-        error_message: Optional[str] = None,
-        exempt_when: Optional[Callable[..., bool]] = None,
-        cost: Union[int, Callable[..., int]] = 1,
+        limit_value: LimitProvider,
+        scope: Scope,
+        key_func: Optional[KeyFn] = None,
+        error_message: Optional[ErrorMessage] = None,
+        exempt_when: Optional[ExemptWhen] = None,
+        cost: Cost = 1,
         override_defaults: bool = True,
-    ) -> Callable:
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]:
         """
         Decorator to be applied to multiple routes sharing the same rate limit.
 
@@ -861,25 +874,11 @@ class Limiter:
             override_defaults=override_defaults,
         )
 
-    def exempt(self, obj):
+    def exempt(self, obj: Callable[P, T]) -> Callable[P, T]:
         """
         Decorator to mark a view as exempt from rate limits.
         """
         name = "%s.%s" % (obj.__module__, obj.__name__)
 
         self._exempt_routes.add(name)
-
-        if asyncio.iscoroutinefunction(obj):
-
-            @wraps(obj)
-            async def __async_inner(*a, **k):
-                return await obj(*a, **k)
-
-            return __async_inner
-        else:
-
-            @wraps(obj)
-            def __inner(*a, **k):
-                return obj(*a, **k)
-
-            return __inner
+        return obj
