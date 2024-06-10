@@ -1,7 +1,18 @@
-import inspect
-from typing import Callable, Iterator, List, Optional, Union
+from typing import Iterator, List, Optional
 
-from limits import RateLimitItem, parse_many  # type: ignore
+from limits import RateLimitItem, parse_many
+from starlette.requests import Request
+
+from .types import (
+    Cost,
+    ErrorMessage,
+    ExemptWhen,
+    KeyFn,
+    LimitProvider,
+    Scope,
+    is_limit_provider_fn,
+    is_request_fn,
+)
 
 
 class Limit(object):
@@ -12,13 +23,13 @@ class Limit(object):
     def __init__(
         self,
         limit: RateLimitItem,
-        key_func: Callable[..., str],
-        scope: Optional[Union[str, Callable[..., str]]],
+        key_func: KeyFn,
+        scope: Optional[Scope],
         per_method: bool,
         methods: Optional[List[str]],
-        error_message: Optional[Union[str, Callable[..., str]]],
-        exempt_when: Optional[Callable[..., bool]],
-        cost: Union[int, Callable[..., int]],
+        error_message: Optional[ErrorMessage],
+        exempt_when: Optional[ExemptWhen],
+        cost: Cost,
         override_defaults: bool,
     ) -> None:
         self.limit = limit
@@ -39,18 +50,11 @@ class Limit(object):
         """
         return self.exempt_when() if self.exempt_when is not None else False
 
-    @property
-    def scope(self) -> str:
-        # flack.request.endpoint is the name of the function for the endpoint
-        # FIXME: how to get the request here?
+    def scope(self, request: Request) -> str:
         if self.__scope is None:
             return ""
         else:
-            return (
-                self.__scope(request.endpoint)  # type: ignore
-                if callable(self.__scope)
-                else self.__scope
-            )
+            return self.__scope(request) if callable(self.__scope) else self.__scope
 
 
 class LimitGroup(object):
@@ -60,14 +64,14 @@ class LimitGroup(object):
 
     def __init__(
         self,
-        limit_provider: Union[str, Callable[..., str]],
-        key_function: Callable[..., str],
-        scope: Optional[Union[str, Callable[..., str]]],
+        limit_provider: LimitProvider,
+        key_function: KeyFn,
+        scope: Optional[Scope],
         per_method: bool,
         methods: Optional[List[str]],
-        error_message: Optional[Union[str, Callable[..., str]]],
-        exempt_when: Optional[Callable[..., bool]],
-        cost: Union[int, Callable[..., int]],
+        error_message: Optional[ErrorMessage],
+        exempt_when: Optional[ExemptWhen],
+        cost: Cost,
         override_defaults: bool,
     ):
         self.__limit_provider = limit_provider
@@ -79,17 +83,16 @@ class LimitGroup(object):
         self.exempt_when = exempt_when
         self.cost = cost
         self.override_defaults = override_defaults
-        self.request = None
 
-    def __iter__(self) -> Iterator[Limit]:
+    def resolve(self, request: Optional[Request] = None) -> Iterator[Limit]:
         if callable(self.__limit_provider):
-            if "key" in inspect.signature(self.__limit_provider).parameters.keys():
-                assert (
-                    "request" in inspect.signature(self.key_function).parameters.keys()
-                ), f"Limit provider function {self.key_function.__name__} needs a `request` argument"
-                if self.request is None:
+            if is_limit_provider_fn(self.__limit_provider):
+                assert is_request_fn(
+                    self.key_function
+                ), f"Limit provider function {getattr(self.key_function, '__name__', str(self.key_function))} needs a `request` argument"
+                if request is None:
                     raise Exception("`request` object can't be None")
-                limit_raw = self.__limit_provider(self.key_function(self.request))
+                limit_raw = self.__limit_provider(self.key_function(request))
             else:
                 limit_raw = self.__limit_provider()
         else:
@@ -107,7 +110,3 @@ class LimitGroup(object):
                 self.cost,
                 self.override_defaults,
             )
-
-    def with_request(self, request):
-        self.request = request
-        return self
