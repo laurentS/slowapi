@@ -38,7 +38,7 @@ pytest==5.3.5
 pyyaml==5.4
 redis==4.3.6
 regex==2020.2.20
-requests==2.23.0
+requests==2.32.2
 six==1.14.0
 starlette==0.25.0
 toml==0.10.0
