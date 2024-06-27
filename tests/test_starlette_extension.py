@@ -43,6 +43,61 @@ class TestDecorators(TestSlowapi):
             if i < 5:
                 assert response.text == "test"
 
+    def test_exempt_when_argument(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
+
+        def return_true():
+            return True
+
+        def return_false():
+            return False
+
+        def dynamic(request: Request):
+            user_agent = request.headers.get("User-Agent")
+            if user_agent is None:
+                return False
+            return user_agent == "exempt"
+
+        @limiter.limit("1/minute", exempt_when=return_true)
+        def always_true(request: Request):
+            return PlainTextResponse("test")
+
+        @limiter.limit("1/minute", exempt_when=return_false)
+        def always_false(request: Request):
+            return PlainTextResponse("test")
+
+        @limiter.limit("1/minute", exempt_when=dynamic)
+        def always_dynamic(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/true", always_true)
+        app.add_route("/false", always_false)
+        app.add_route("/dynamic", always_dynamic)
+
+        client = TestClient(app)
+        # Test always true always exempting
+        for i in range(0, 2):
+            response = client.get("/true")
+            assert response.status_code == 200
+            assert response.text == "test"
+        # Test always false hitting the limit after one hit
+        for i in range(0, 2):
+            response = client.get("/false")
+            assert response.status_code == 200 if i < 1 else 429
+            if i < 1:
+                assert response.text == "test"
+        # Test dynamic not exempting with the correct header
+        for i in range(0, 2):
+            response = client.get("/dynamic", headers={"User-Agent": "exempt"})
+            assert response.status_code == 200
+            assert response.text == "test"
+        # Test dynamic exempting with the incorrect header
+        for i in range(0, 2):
+            response = client.get("/dynamic")
+            assert response.status_code == 200 if i < 1 else 429
+            if i < 1:
+                assert response.text == "test"
+
     def test_shared_decorator(self, build_starlette_app):
         app, limiter = build_starlette_app(key_func=get_ipaddr)
 
