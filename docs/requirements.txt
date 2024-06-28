@@ -46,6 +46,6 @@ tornado==6.0.4
 tqdm==4.50.0; python_version > "2.7"
 typed-ast==1.4.1
 typing-extensions==3.7.4.1
-urllib3==1.26.5
+urllib3==1.26.19
 wcwidth==0.1.8
 zipp==3.1.0; python_version < "3.8"
