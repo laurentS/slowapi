@@ -35,6 +35,7 @@ from starlette.responses import JSONResponse, Response
 from typing_extensions import Literal
 
 from .errors import RateLimitExceeded
+from .util import add_request_signature
 from .wrappers import Limit, LimitGroup
 
 # used to annotate get_app_config method
@@ -661,6 +662,7 @@ class Limiter:
         _scope = scope if shared else None
 
         def decorator(func: Callable[..., Response]):
+            func = add_request_signature(func)
             keyfunc = key_func or self._key_func
             name = f"{func.__module__}.{func.__name__}"
             dynamic_limit = None
