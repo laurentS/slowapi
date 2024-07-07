@@ -164,12 +164,12 @@ $ pytest
 
 `slowapi` tries to follow [semantic versioning](https://semver.org/).
 
-To release a new version:
-
-- Update CHANGELOG.md
-- Bump the version number in `pyproject.toml`
-- `poetry build`
-- `poetry publish`
+Releases are published directly from CI (github actions). To create a new release:
+- Update `CHANGELOG.md` and the version in `pyproject.toml`,
+- Commit those changes to a new PR,
+- Get the PR reviewed and merged,
+- Tag the merge commit with the same version number prefixed with `v`, eg. `v0.1.6`,
+- Push the tag to trigger the release.
 
 # Credits
 
