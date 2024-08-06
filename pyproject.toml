@@ -21,7 +21,7 @@ redis = {version = "^3.4.1", optional = true}
 [tool.poetry.dev-dependencies]
 isort = "^4.3.21"
 mypy = "^0.910"
-black = "^23.0.0"
+black = "^24.0.0"
 fastapi = "^0.89.0"
 lxml = "^4.9.1"
 starlette = "^0.22.0"
