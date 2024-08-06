@@ -22,7 +22,7 @@ redis = {version = "^3.4.1", optional = true}
 isort = "^4.3.21"
 mypy = "^0.910"
 black = "^23.0.0"
-fastapi = "^0.89.0"
+fastapi = "^0.109.0"
 lxml = "^4.9.1"
 starlette = "^0.22.0"
 mock = "^4.0.1"
