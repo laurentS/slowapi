@@ -7,7 +7,10 @@ def get_remote_address(request: Request) -> str:
     """
     is_local = not request.client or not request.client.host
 
-    return "127.0.0.1" if is_local else request.client.host
+    if is_local:
+        return "127.0.0.1"
+    else:
+        return request.client.host
 
 
 def get_ipaddr(request: Request) -> str:
@@ -18,8 +21,8 @@ def get_ipaddr(request: Request) -> str:
      provided by uvicorn's ProxyHeadersMiddleware.
     """
     has_forwarded = "X_FORWARDED_FOR" in request.headers
-    return (
-        request.headers["X_FORWARDED_FOR"]
-        if has_forwarded
-        else get_remote_address(request)
-    )
+    
+    if has_forwarded:
+        return request.headers["X_FORWARDED_FOR"]
+    else:
+        return get_remote_address(request) 
