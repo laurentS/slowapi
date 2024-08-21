@@ -5,6 +5,8 @@
 ### Changed
 
 - Breaking change: allow usage of the request object in the except_when function (thanks @colin99d)
+- Added more test exemption logic (thanks @colin99)
+- Fix logger warning for Python 3.11 deprecation  (thanks @kevin868)
 
 ## [0.1.9] - 2024-02-05
 
