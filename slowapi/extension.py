@@ -487,8 +487,12 @@ class Limiter:
         limit_for_header = None
         for lim in limits:
             limit_scope = lim.scope or endpoint
-            if lim.is_exempt(request):
+            if getattr(lim, "_exempt_when_takes_request", False):
+                if lim.is_exempt(request):
+                    continue
+            elif lim.is_exempt():
                 continue
+
             if lim.methods is not None and request.method.lower() not in lim.methods:
                 continue
             if lim.per_method:
