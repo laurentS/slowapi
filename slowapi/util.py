@@ -21,8 +21,8 @@ def get_ipaddr(request: Request) -> str:
      provided by uvicorn's ProxyHeadersMiddleware.
     """
     has_forwarded = "X_FORWARDED_FOR" in request.headers
-    
+
     if has_forwarded:
         return request.headers["X_FORWARDED_FOR"]
     else:
-        return get_remote_address(request) 
+        return get_remote_address(request)
