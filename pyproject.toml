@@ -34,7 +34,7 @@ mkautodoc = "^0.1.0"
 types-redis = "^3.5.6"
 coverage = "^6.3"
 flake8 = "^4.0.1"
-setuptools = "^65.5.0"
+setuptools = "^70.0.0"
 httpx = "^0.23.3"
 
 [tool.black]
