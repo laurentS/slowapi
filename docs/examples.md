@@ -8,7 +8,7 @@ The tests show a lot of different use cases that are not all covered here.
 
 ```python
     from starlette.applications import Starlette
-    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi import Limiter, rate_limit_exceeded_handler
     from slowapi.util import get_remote_address
     from slowapi.middleware import SlowAPIMiddleware
     from slowapi.errors import RateLimitExceeded
@@ -16,7 +16,7 @@ The tests show a lot of different use cases that are not all covered here.
     limiter = Limiter(key_func=get_remote_address, default_limits=["1/minute"])
     app = Starlette()
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
 
     # this will be limited by the default_limits
