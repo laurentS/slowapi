@@ -34,17 +34,17 @@ Supported now:
   * The `request` argument must be explicitly passed to your endpoint, or `slowapi` won't be able to hook into it. In other words, write:
 
 ```python
-    @limiter.limit("5/minute")
-    async def myendpoint(request: Request)
-        pass
+@limiter.limit("5/minute")
+async def myendpoint(request: Request)
+    pass
 ```
 
 and not:
 
 ```python
-    @limiter.limit("5/minute")
-    async def myendpoint()
-        pass
+@limiter.limit("5/minute")
+async def myendpoint()
+    pass
 ```
 
   * `websocket` endpoints are not supported yet.
@@ -56,12 +56,12 @@ PRs are more than welcome! Please include tests for your changes :)
 The package uses [poetry](https://python-poetry.org) to manage dependencies. To setup your dev env:
 
 ```bash
-$ poetry install
+poetry install
 ```
 
 To run the tests:
 ```bash
-$ pytest
+pytest
 ```
 
 # Credits
