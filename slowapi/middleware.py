@@ -159,23 +159,27 @@ class _ASGIMiddlewareResponder:
 
     async def send_wrapper(self, message: Message) -> None:
         if message["type"] == "http.response.start":
-            # do not send the http.response.start message now, so that we can edit the headers
-            # before sending it, based on what happens in the http.response.body message.
-            self.initial_message = message
-
-        elif message["type"] == "http.response.body":
+            # Modify the start message immediately instead of storing it
+            # This allows streaming responses to work correctly by sending
+            # the start message before any body chunks
             if self.error_response:
-                self.initial_message["status"] = self.error_response.status_code
+                message["status"] = self.error_response.status_code
 
             if self.inject_headers:
-                headers = MutableHeaders(raw=self.initial_message["headers"])
+                headers = MutableHeaders(raw=message["headers"])
                 headers = self.limiter._inject_asgi_headers(
                     headers, self.request.state.view_rate_limit
                 )
 
-            # send the http.response.start message just before the http.response.body one,
-            # now that the headers are updated
-            await self.send(self.initial_message)
+            # Send the http.response.start message immediately
+            # This is crucial for streaming responses which expect
+            # the start message before any body chunks
+            self.started = True
+            await self.send(message)
+
+        elif message["type"] == "http.response.body":
+            # Send body chunks directly without any buffering
+            # This allows streaming responses to flow naturally
             await self.send(message)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
