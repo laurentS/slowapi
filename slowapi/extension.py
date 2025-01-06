@@ -28,6 +28,7 @@ from limits import RateLimitItem  # type: ignore
 from limits.errors import ConfigurationError  # type: ignore
 from limits.storage import MemoryStorage, storage_from_string  # type: ignore
 from limits.strategies import STRATEGIES, RateLimiter  # type: ignore
+from limits.util import WindowStats
 from starlette.config import Config
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
@@ -384,10 +385,10 @@ class Limiter:
                     "parameter `response` must be an instance of starlette.responses.Response"
                 )
             try:
-                window_stats: Tuple[int, int] = self.limiter.get_window_stats(
+                window_stats: WindowStats = self.limiter.get_window_stats(
                     current_limit[0], *current_limit[1]
                 )
-                reset_in = 1 + window_stats[0]
+                reset_in = int(1 + window_stats[0])
                 response.headers.append(
                     self._header_mapping[HEADERS.LIMIT], str(current_limit[0].amount)
                 )
@@ -440,10 +441,10 @@ class Limiter:
         """
         if self.enabled and self._headers_enabled and current_limit is not None:
             try:
-                window_stats: Tuple[int, int] = self.limiter.get_window_stats(
+                window_stats: WindowStats = self.limiter.get_window_stats(
                     current_limit[0], *current_limit[1]
                 )
-                reset_in = 1 + window_stats[0]
+                reset_in = int(1 + window_stats[0])
                 headers[self._header_mapping[HEADERS.LIMIT]] = str(
                     current_limit[0].amount
                 )
