@@ -27,7 +27,7 @@ Supported now:
 - redis, memcached and memory backends to track your limits (memory as a fallback)
 - support for sync and async HTTP endpoints
 - Support for shared limits across a set of routes
-
+- The library aims to support all [currently supported versions](https://devguide.python.org/versions/) of python
 
 # Limitations and known issues
 
