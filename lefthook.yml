@@ -1,0 +1,10 @@
+pre-commit:
+  commands:
+    ruff-check:
+      glob: "*.py" 
+      stage_fixed: true
+      run: ruff check {staged_files} --fix --exit-non-zero-on-fix
+    ruff-fmt:
+      glob: "*.py"
+      stage_fixed: true
+      run: ruff format --exit-non-zero-on-format {staged_files}
