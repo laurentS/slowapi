@@ -87,6 +87,15 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Re
     return response
 
 
+def rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
+    """
+    Handle rate limit exceeded exceptions.
+    """
+    if isinstance(exc, RateLimitExceeded):
+        return _rate_limit_exceeded_handler(request, exc)
+    raise exc
+
+
 class Limiter:
     """
     Initializes the slowapi rate limiter.
