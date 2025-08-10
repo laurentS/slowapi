@@ -5,7 +5,7 @@ black==23.3.0
 certifi==2022.12.7
 chardet==3.0.4
 click==7.1.2
-colorama==0.4.3; sys_platform == "win32"
+colorama==0.4.6; sys_platform == "win32"
 dataclasses==0.6; python_version < "3.7"
 fastapi==0.65.2
 future==0.18.3
