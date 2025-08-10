@@ -3,15 +3,25 @@ name = "slowapi"
 version = "0.2.0"
 description = "A rate limiting extension for Starlette and FastAPI"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
-    { name = "Laurent Savaete", email = "laurent@where.tf"},
+    { name = "Laurent Savaete", email = "laurent@where.tf"}
+]
+maintainers = [
     { name = "Noelle Wang", email = "73260931+No767@users.noreply.github.com" }
 ]
-requires-python = ">=3.10,<4"
+requires-python = ">=3.9,<4"
 dependencies = [
-    "fastapi>=0.116.1,<1",
-    "limits>=5.5.0,<6",
+    "fastapi>=0.89.0,<1",
+    "limits>=4.2,<6",
 ]
+
+[project.urls]
+Homepage = "https://github.com/laurents/slowapi"
+Documentation = "https://slowapi.readthedocs.io/en/latest/"
+Repository = "https://github.com/laurents/slowapi"
+Issues = "https://github.com/laurents/slowapi/issues"
 
 [project.optional-dependencies]
 redis = [
