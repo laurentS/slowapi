@@ -107,6 +107,7 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.uv.build-backend]
 module-root = ""
+source-include = ["slowapi/py.typed"]
 
 [build-system]
 requires = ["uv_build>=0.8.5,<0.9.0"]
