@@ -41,7 +41,7 @@ regex==2020.2.20
 requests==2.23.0
 six==1.14.0
 starlette==0.25.0
-toml==0.10.0
+toml==0.10.2
 tornado==6.0.4
 tqdm==4.50.0; python_version > "2.7"
 typed-ast==1.4.1
