@@ -23,7 +23,7 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
             if i < 5:
                 assert response.text == "test"
 
@@ -39,7 +39,7 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
             if i < 5:
                 assert response.text == "test"
 
@@ -83,7 +83,7 @@ class TestDecorators(TestSlowapi):
         # Test always false hitting the limit after one hit
         for i in range(0, 2):
             response = client.get("/false")
-            assert response.status_code == 200 if i < 1 else 429
+            assert response.status_code == (200 if i < 1 else 429)
             if i < 1:
                 assert response.text == "test"
         # Test dynamic not exempting with the correct header
@@ -94,7 +94,7 @@ class TestDecorators(TestSlowapi):
         # Test dynamic exempting with the incorrect header
         for i in range(0, 2):
             response = client.get("/dynamic")
-            assert response.status_code == 200 if i < 1 else 429
+            assert response.status_code == (200 if i < 1 else 429)
             if i < 1:
                 assert response.text == "test"
 
@@ -117,7 +117,7 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
         # the shared limit has already been hit via t1
         assert client.get("/t2").status_code == 429
 
@@ -135,7 +135,7 @@ class TestDecorators(TestSlowapi):
             cli = TestClient(app)
             for i in range(0, 10):
                 response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
-                assert response.status_code == 200 if i < 5 else 429
+                assert response.status_code == (200 if i < 5 else 429)
             for i in range(5):
                 assert cli.get("/t1").status_code == 200
 
@@ -159,7 +159,7 @@ class TestDecorators(TestSlowapi):
             cli = TestClient(app)
             for i in range(0, 10):
                 response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
-                assert response.status_code == 200 if i < 5 else 429
+                assert response.status_code == (200 if i < 5 else 429)
                 assert response.headers.get("Retry-After") if i < 5 else True
             for i in range(5):
                 assert cli.get("/t1").status_code == 200
@@ -304,7 +304,7 @@ class TestDecorators(TestSlowapi):
             cli = TestClient(app)
             for i in range(0, 10):
                 response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
-                assert response.status_code == 200 if i < 5 else 429
+                assert response.status_code == (200 if i < 5 else 429)
             for i in range(5):
                 assert cli.get("/t1").status_code == 200
 
@@ -332,14 +332,14 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
             if i < 5:
                 assert response.text == "test"
             else:
                 assert "error" in response.json()
 
             response = client.get("/t2")
-            assert response.status_code == 200 if i < 3 else 429
+            assert response.status_code == (200 if i < 3 else 429)
             if i < 3:
                 assert response.text == "test"
             else:
@@ -365,14 +365,14 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1", headers={"foo": "10"})
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
             if i < 5:
                 assert response.text == "test"
             else:
                 assert "error" in response.json()
 
             response = client.get("/t2", headers={"foo": "5"})
-            assert response.status_code == 200 if i < 6 else 429
+            assert response.status_code == (200 if i < 6 else 429)
             if i < 6:
                 assert response.text == "test"
             else:
