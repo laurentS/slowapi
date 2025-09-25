@@ -32,6 +32,7 @@ from starlette.config import Config
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.applications import Starlette
 from typing_extensions import Literal
 
 from .errors import RateLimitExceeded
@@ -326,7 +327,7 @@ class Limiter:
             self._fallback_storage = MemoryStorage()
             self._fallback_limiter = STRATEGIES[strategy](self._fallback_storage)
 
-    def slowapi_startup(self) -> None:
+    def slowapi_startup(self, app: Starlette) -> None:
         """
         Starlette startup event handler that links the app with the Limiter instance.
         """
