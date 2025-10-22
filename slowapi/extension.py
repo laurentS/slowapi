@@ -93,9 +93,6 @@ class Limiter:
 
     ** parameter **
 
-    * **app**: `Starlette/FastAPI` instance to initialize the extension
-     with.
-
     * **default_limits**: a variable list of strings or callables returning strings denoting global
      limits to apply to all routes. `ratelimit-string` for  more details.
 
@@ -129,7 +126,6 @@ class Limiter:
 
     def __init__(
         self,
-        # app: Starlette = None,
         key_func: Callable[..., str],
         default_limits: List[StrOrCallableStr] = [],
         application_limits: List[StrOrCallableStr] = [],
@@ -150,10 +146,6 @@ class Limiter:
         """
         Configure the rate limiter at app level
         """
-        # assert app is not None, "Passing the app instance to the limiter is required"
-        # self.app = app
-        # app.state.limiter = self
-
         self.logger = logging.getLogger("slowapi")
 
         dotenv_file_exists = os.path.isfile(".env")
