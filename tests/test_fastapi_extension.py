@@ -5,6 +5,7 @@ from starlette.responses import PlainTextResponse, Response
 from starlette.testclient import TestClient
 
 from slowapi.util import get_ipaddr
+from slowapi.extension import _rate_limit_exceeded_handler
 from tests import TestSlowapi
 
 
@@ -369,3 +370,54 @@ class TestDecorators(TestSlowapi):
                 )
                 == 2
             )
+
+    def test_rate_limit_exceeded_handler_with_detail(self, build_fastapi_app):
+        """Test that RateLimitExceeded exceptions with detail attribute work correctly."""
+
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
+
+        @app.get("/test")
+        @limiter.limit("1/minute")
+        async def test_endpoint(request: Request):
+            return {"message": "test"}
+
+        client = TestClient(app)
+
+        # Make first request - should succeed
+        response1 = client.get("/test")
+        assert response1.status_code == 200
+
+        # Make second request - should be rate limited
+        response2 = client.get("/test")
+        assert response2.status_code == 429
+        assert "error" in response2.json()
+        assert "Rate limit exceeded" in response2.json()["error"]
+
+    def test_rate_limit_exceeded_handler_without_detail(self, build_fastapi_app):
+        """Test that exceptions without 'detail' attribute are handled gracefully.
+        
+        This tests the fix for issue #213 where ConnectionError or other exceptions
+        without a 'detail' attribute would cause AttributeError.
+        """
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
+        client = TestClient(app)
+        
+        # Create an exception without a 'detail' attribute (simulating ConnectionError)
+        class ExceptionWithoutDetail(Exception):
+            def __init__(self):
+                super().__init__("Connection failed")
+
+        @app.get("/test")
+        async def test_endpoint(request: Request):
+            # Manually trigger the handler with an exception without detail
+            # This simulates the bug scenario from issue #213
+            exc = ExceptionWithoutDetail()
+            response = _rate_limit_exceeded_handler(request, exc)
+            return response
+
+        # Should not crash with AttributeError
+        response = client.get("/test")
+        assert response.status_code == 429
+        assert "error" in response.json()
+        assert "Rate limit exceeded" in response.json()["error"]
+        assert "Connection failed" in response.json()["error"]
