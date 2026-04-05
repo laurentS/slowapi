@@ -12,7 +12,7 @@ from starlette.responses import Response
 from starlette.routing import BaseRoute, Match
 from starlette.types import ASGIApp, Message, Scope, Receive, Send
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter, _current_request, _rate_limit_exceeded_handler
 
 
 def _find_route_handler(
@@ -120,23 +120,29 @@ class SlowAPIMiddleware(BaseHTTPMiddleware):
         app: Starlette = request.app
         limiter: Limiter = app.state.limiter
 
-        if not limiter.enabled:
-            return await call_next(request)
+        token = _current_request.set(request)
+        try:
+            if not limiter.enabled:
+                return await call_next(request)
 
-        handler = _find_route_handler(app.routes, request.scope)
-        if _should_exempt(limiter, handler):
-            return await call_next(request)
+            handler = _find_route_handler(app.routes, request.scope)
+            if _should_exempt(limiter, handler):
+                return await call_next(request)
 
-        error_response, should_inject_headers = sync_check_limits(
-            limiter, request, handler, app
-        )
-        if error_response is not None:
-            return error_response
+            error_response, should_inject_headers = sync_check_limits(
+                limiter, request, handler, app
+            )
+            if error_response is not None:
+                return error_response
 
-        response = await call_next(request)
-        if should_inject_headers:
-            response = limiter._inject_headers(response, request.state.view_rate_limit)
-        return response
+            response = await call_next(request)
+            if should_inject_headers:
+                response = limiter._inject_headers(
+                    response, request.state.view_rate_limit
+                )
+            return response
+        finally:
+            _current_request.reset(token)
 
 
 class SlowAPIASGIMiddleware:
@@ -189,18 +195,23 @@ class _ASGIMiddlewareResponder:
 
         handler = _find_route_handler(_app.routes, scope)
         request = Request(scope, receive=receive, send=self.send)
-        if _should_exempt(limiter, handler):
-            return await self.app(scope, receive, self.send)
 
-        error_response, should_inject_headers = await async_check_limits(
-            limiter, request, handler, _app
-        )
-        if error_response is not None:
-            return await error_response(scope, receive, self.send_wrapper)
+        token = _current_request.set(request)
+        try:
+            if _should_exempt(limiter, handler):
+                return await self.app(scope, receive, self.send)
 
-        if should_inject_headers:
-            self.inject_headers = True
-            self.limiter = limiter
-            self.request = request
+            error_response, should_inject_headers = await async_check_limits(
+                limiter, request, handler, _app
+            )
+            if error_response is not None:
+                return await error_response(scope, receive, self.send_wrapper)
 
-        return await self.app(scope, receive, self.send_wrapper)
+            if should_inject_headers:
+                self.inject_headers = True
+                self.limiter = limiter
+                self.request = request
+
+            return await self.app(scope, receive, self.send_wrapper)
+        finally:
+            _current_request.reset(token)

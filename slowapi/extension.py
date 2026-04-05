@@ -9,6 +9,7 @@ import itertools
 import logging
 import os
 import time
+from contextvars import ContextVar
 from datetime import datetime
 from email.utils import formatdate, parsedate_to_datetime
 from functools import wraps
@@ -39,6 +40,11 @@ from .wrappers import Limit, LimitGroup
 
 # used to annotate get_app_config method
 T = TypeVar("T")
+# ContextVar to hold the current request, set by middleware so that
+# endpoints don't need an explicit ``request`` parameter.
+_current_request: ContextVar[Optional[Request]] = ContextVar(
+    "_current_request", default=None
+)
 # Define an alias for the most commonly used type
 StrOrCallableStr = Union[str, Callable[..., str]]
 
@@ -387,7 +393,7 @@ class Limiter:
                 window_stats: Tuple[int, int] = self.limiter.get_window_stats(
                     current_limit[0], *current_limit[1]
                 )
-                reset_in = 1 + window_stats[0]
+                reset_in = int(1 + window_stats[0])
                 response.headers.append(
                     self._header_mapping[HEADERS.LIMIT], str(current_limit[0].amount)
                 )
@@ -443,7 +449,7 @@ class Limiter:
                 window_stats: Tuple[int, int] = self.limiter.get_window_stats(
                     current_limit[0], *current_limit[1]
                 )
-                reset_in = 1 + window_stats[0]
+                reset_in = int(1 + window_stats[0])
                 headers[self._header_mapping[HEADERS.LIMIT]] = str(
                     current_limit[0].amount
                 )
@@ -705,13 +711,32 @@ class Limiter:
                 self._route_limits.setdefault(name, []).extend(static_limits)
 
             sig = inspect.signature(func)
+            idx: Optional[int] = None
             for idx, parameter in enumerate(sig.parameters.values()):
                 if parameter.name == "request" or parameter.name == "websocket":
                     break
             else:
-                raise Exception(
-                    f'No "request" or "websocket" argument on function "{func}"'
-                )
+                # No explicit request param – will resolve from ContextVar at runtime
+                idx = None
+
+            def _resolve_request(args: Any, kwargs: Any) -> Request:
+                """Get the request from function args or fall back to ContextVar."""
+                request = None
+                if idx is not None:
+                    request = kwargs.get("request", args[idx] if args else None)
+                if request is None:
+                    request = _current_request.get(None)
+                if not isinstance(request, Request):
+                    if idx is not None:
+                        raise Exception(
+                            "parameter `request` must be an instance of starlette.requests.Request"
+                        )
+                    raise Exception(
+                        f'No "request" or "websocket" argument on function "{func}" '
+                        "and no request found in context. Either add a `request: Request` "
+                        "parameter or ensure SlowAPI middleware is installed."
+                    )
+                return request
 
             if asyncio.iscoroutinefunction(func):
                 # Handle async request/response functions.
@@ -719,11 +744,7 @@ class Limiter:
                 async def async_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
                     if self.enabled:
-                        request = kwargs.get("request", args[idx] if args else None)
-                        if not isinstance(request, Request):
-                            raise Exception(
-                                "parameter `request` must be an instance of starlette.requests.Request"
-                            )
+                        request = _resolve_request(args, kwargs)
 
                         if self._auto_check and not getattr(
                             request.state, "_rate_limiting_complete", False
@@ -752,11 +773,7 @@ class Limiter:
                 def sync_wrapper(*args: Any, **kwargs: Any) -> Response:
                     # get the request object from the decorated endpoint function
                     if self.enabled:
-                        request = kwargs.get("request", args[idx] if args else None)
-                        if not isinstance(request, Request):
-                            raise Exception(
-                                "parameter `request` must be an instance of starlette.requests.Request"
-                            )
+                        request = _resolve_request(args, kwargs)
 
                         if self._auto_check and not getattr(
                             request.state, "_rate_limiting_complete", False
