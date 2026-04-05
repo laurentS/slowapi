@@ -144,35 +144,37 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_endpoint_missing_request_param(self, build_fastapi_app):
+    def test_endpoint_no_request_param_async(self, build_fastapi_app):
+        """Endpoint without explicit request param works via ContextVar."""
         app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
-        with pytest.raises(Exception) as exc_info:
+        @app.get("/t3")
+        @limiter.limit("5/minute")
+        async def t3():
+            return PlainTextResponse("test")
 
-            @app.get("/t3")
-            @limiter.limit("5/minute")
-            async def t3():
-                return PlainTextResponse("test")
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t3")
+            assert response.status_code == 200 if i < 5 else 429
 
-        assert exc_info.match(
-            r"""^No "request" or "websocket" argument on function .*"""
-        )
-
-    def test_endpoint_missing_request_param_sync(self, build_fastapi_app):
+    def test_endpoint_no_request_param_sync(self, build_fastapi_app):
+        """Sync endpoint without explicit request param works via ContextVar."""
         app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
-        with pytest.raises(Exception) as exc_info:
+        @app.get("/t3_sync")
+        @limiter.limit("5/minute")
+        def t3():
+            return PlainTextResponse("test")
 
-            @app.get("/t3_sync")
-            @limiter.limit("5/minute")
-            def t3():
-                return PlainTextResponse("test")
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t3_sync")
+            assert response.status_code == 200 if i < 5 else 429
 
-        assert exc_info.match(
-            r"""^No "request" or "websocket" argument on function .*"""
-        )
-
-    def test_endpoint_request_param_invalid(self, build_fastapi_app):
+    def test_endpoint_request_param_wrong_type_hint(self, build_fastapi_app):
+        """Even with wrong type hint, FastAPI injects the real Request object
+        and ContextVar provides a fallback, so rate limiting still works."""
         app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         @app.get("/t4")
@@ -180,12 +182,10 @@ class TestDecorators(TestSlowapi):
         async def t4(request: str = None):
             return PlainTextResponse("test")
 
-        with pytest.raises(Exception) as exc_info:
-            client = TestClient(app)
-            client.get("/t4")
-        assert exc_info.match(
-            r"""parameter `request` must be an instance of starlette.requests.Request"""
-        )
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t4")
+            assert response.status_code == 200 if i < 5 else 429
 
     def test_endpoint_response_param_invalid(self, build_fastapi_app):
         app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
@@ -202,7 +202,9 @@ class TestDecorators(TestSlowapi):
             r"""parameter `response` must be an instance of starlette.responses.Response"""
         )
 
-    def test_endpoint_request_param_invalid_sync(self, build_fastapi_app):
+    def test_endpoint_request_param_wrong_type_hint_sync(self, build_fastapi_app):
+        """Even with wrong type hint, FastAPI injects the real Request object
+        and ContextVar provides a fallback, so rate limiting still works."""
         app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
         @app.get("/t5")
@@ -210,12 +212,10 @@ class TestDecorators(TestSlowapi):
         def t5(request: str = None):
             return PlainTextResponse("test")
 
-        with pytest.raises(Exception) as exc_info:
-            client = TestClient(app)
-            client.get("/t5")
-        assert exc_info.match(
-            r"""parameter `request` must be an instance of starlette.requests.Request"""
-        )
+        client = TestClient(app)
+        for i in range(0, 10):
+            response = client.get("/t5")
+            assert response.status_code == 200 if i < 5 else 429
 
     def test_endpoint_response_param_invalid_sync(self, build_fastapi_app):
         app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
@@ -231,6 +231,25 @@ class TestDecorators(TestSlowapi):
         assert exc_info.match(
             r"""parameter `response` must be an instance of starlette.responses.Response"""
         )
+
+    def test_endpoint_no_request_param_no_middleware(self):
+        """Without middleware and without request param, a clear error is raised."""
+        from fastapi import FastAPI
+        from slowapi import Limiter
+        from slowapi.util import get_ipaddr as _get_ipaddr
+
+        limiter = Limiter(key_func=_get_ipaddr)
+        app = FastAPI()
+        app.state.limiter = limiter
+
+        @app.get("/t_no_mw")
+        @limiter.limit("5/minute")
+        async def t_no_mw():
+            return PlainTextResponse("test")
+
+        with pytest.raises(Exception, match=r"no request found in context"):
+            client = TestClient(app)
+            client.get("/t_no_mw")
 
     def test_dynamic_limit_provider_depending_on_key(self, build_fastapi_app):
         def custom_key_func(request: Request):
