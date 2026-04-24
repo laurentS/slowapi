@@ -51,18 +51,12 @@ class Limit(object):
             return self.exempt_when(request)
         return self.exempt_when()
 
-    @property
-    def scope(self) -> str:
-        # flack.request.endpoint is the name of the function for the endpoint
-        # FIXME: how to get the request here?
+    def scope_for(self, request: Request) -> str:
         if self.__scope is None:
             return ""
-        else:
-            return (
-                self.__scope(request.endpoint)  # type: ignore
-                if callable(self.__scope)
-                else self.__scope
-            )
+        if callable(self.__scope):
+            return self.__scope(request)
+        return self.__scope
 
 
 class LimitGroup(object):

@@ -121,6 +121,36 @@ class TestDecorators(TestSlowapi):
         # the shared limit has already been hit via t1
         assert client.get("/t2").status_code == 429
 
+    def test_shared_decorator_callable_scope(self, build_starlette_app):
+        """Callable scope receives the request and buckets are keyed by its return value."""
+        app, limiter = build_starlette_app(key_func=get_ipaddr)
+
+        def scope_from_tenant(request: Request) -> str:
+            return request.headers.get("X-Tenant", "default")
+
+        shared_lim = limiter.shared_limit("5/minute", scope=scope_from_tenant)
+
+        @shared_lim
+        def t1(request: Request):
+            return PlainTextResponse("test")
+
+        @shared_lim
+        def t2(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+        app.add_route("/t2", t2)
+
+        client = TestClient(app)
+        # tenant A burns its budget on /t1 ...
+        for i in range(10):
+            resp = client.get("/t1", headers={"X-Tenant": "A"})
+            assert resp.status_code == (200 if i < 5 else 429)
+        # ... and /t2 is also exhausted for tenant A (shared scope)
+        assert client.get("/t2", headers={"X-Tenant": "A"}).status_code == 429
+        # but tenant B has its own bucket — scope callable isolates them
+        assert client.get("/t2", headers={"X-Tenant": "B"}).status_code == 200
+
     def test_multiple_decorators(self, build_starlette_app):
         app, limiter = build_starlette_app(key_func=get_ipaddr)
 
