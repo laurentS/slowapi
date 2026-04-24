@@ -479,7 +479,7 @@ class Limiter:
         failed_limit = None
         limit_for_header = None
         for lim in limits:
-            limit_scope = lim.scope or endpoint
+            limit_scope = lim.scope_for(request) or endpoint
             if lim.is_exempt(request):
                 continue
             if lim.methods is not None and request.method.lower() not in lim.methods:
