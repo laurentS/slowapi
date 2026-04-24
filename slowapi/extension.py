@@ -326,13 +326,6 @@ class Limiter:
             self._fallback_storage = MemoryStorage()
             self._fallback_limiter = STRATEGIES[strategy](self._fallback_storage)
 
-    def slowapi_startup(self) -> None:
-        """
-        Starlette startup event handler that links the app with the Limiter instance.
-        """
-        app.state.limiter = self  # type: ignore
-        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
-
     def get_app_config(self, key: str, default_value: T = None) -> T:
         """
         Place holder until we find a better way to load config from app
