@@ -1,5 +1,9 @@
 from starlette.requests import Request
 
+# The functions below are provided for convenience and for use in tests.
+# They are not robust, as the number of issues about them will attest, and
+# correcting them for the numerous variations of possible setups is out of
+# scope for slowapi.
 
 def get_ipaddr(request: Request) -> str:
     """
