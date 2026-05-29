@@ -1,0 +1,52 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Python package
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install build dependencies for requests in python 3.9
+      # it's not clear why this is needed only for this version of python
+      run: sudo apt-get install libxml2-dev libxslt-dev
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        # Version of Poetry to use
+        version: 1.4.2
+    - name: Install dependencies
+      run: |
+        poetry install
+    - name: Check formatting with black
+      run: |
+        poetry run black --check .
+    - name: Check typing annotations with mypy
+      run: |
+        poetry run mypy .
+    - name: Verify unused imports
+      run: |
+        poetry run flake8 --select F401
+    - name: Test with pytest
+      # Wrapped by coverage to generate coverage data
+      run: |
+        poetry run coverage run --omit="tests*" -m pytest
+    - name: Generate coverage report
+      run: |
+        poetry run coverage report
