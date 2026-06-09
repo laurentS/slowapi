@@ -185,6 +185,16 @@ class Limiter:
         self._key_prefix = key_prefix
         self._key_style = key_style
 
+        # A bare limit string (e.g. ``default_limits="1/minute"``) is a common
+        # mistake. The loops below iterate these arguments, and iterating a
+        # string yields its characters, silently producing a set of invalid
+        # one-character limits that later crash at request time. Accept a single
+        # limit passed as a string by wrapping it in a list (#239).
+        if isinstance(default_limits, str):
+            default_limits = [default_limits]
+        if isinstance(application_limits, str):
+            application_limits = [application_limits]
+
         for limit in set(default_limits):
             self._default_limits.extend(
                 [

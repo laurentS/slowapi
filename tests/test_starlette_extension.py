@@ -314,6 +314,38 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
+    def test_default_limits_accepts_a_bare_string(self, build_starlette_app):
+        """A single limit may be passed as a string, not just a list (#239)."""
+        app, limiter = build_starlette_app(
+            key_func=get_remote_address, default_limits="1/minute"
+        )
+        assert len(limiter._default_limits) == 1
+
+        @app.route("/t1")
+        def t1(request: Request):
+            return PlainTextResponse("test")
+
+        with TestClient(app) as cli:
+            headers = {"X_FORWARDED_FOR": "127.0.0.20"}
+            assert cli.get("/t1", headers=headers).status_code == 200
+            assert cli.get("/t1", headers=headers).status_code == 429
+
+    def test_application_limits_accepts_a_bare_string(self, build_starlette_app):
+        """``application_limits`` may likewise be passed as a string (#239)."""
+        app, limiter = build_starlette_app(
+            key_func=get_remote_address, application_limits="1/minute"
+        )
+        assert len(limiter._application_limits) == 1
+
+        @app.route("/t1")
+        def t1(request: Request):
+            return PlainTextResponse("test")
+
+        with TestClient(app) as cli:
+            headers = {"X_FORWARDED_FOR": "127.0.0.21"}
+            assert cli.get("/t1", headers=headers).status_code == 200
+            assert cli.get("/t1", headers=headers).status_code == 429
+
     def test_cost(self, build_starlette_app):
         app, limiter = build_starlette_app(key_func=get_ipaddr)
 
