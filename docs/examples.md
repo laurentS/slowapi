@@ -29,10 +29,11 @@ The tests show a lot of different use cases that are not all covered here.
 ## Exempt a route from the global limit
 
 ```python
-    @app.route("/someroute")
-    @limiter.exempt
     def t(request: Request):
         return PlainTextResponse("I'm unlimited")
+
+    limiter.exempt(handler)
+    app.add_route("/someroute", handler)
 ```
 
 ## Disable the limiter entirely
@@ -44,10 +45,11 @@ Simply pass `enabled=False` to the constructor.
 ```python
     limiter = Limiter(key_func=get_remote_address, enabled=False)
 
-    @app.route("/someroute")
-    @limiter.exempt
     def t(request: Request):
         return PlainTextResponse("I'm unlimited")
+    
+    limiter.exempt(handler)
+    app.add_route("/someroute", handler)
 ```
 
 You can always switch this during the lifetime of the limiter:
@@ -76,10 +78,11 @@ Define a function which takes a request as parameter and returns a cost and pass
     def get_hit_cost(request: Request) -> int:
         return len(request)
 
-    @app.route("/someroute")
     @limiter.limit("100/minute", cost=get_hit_cost)
     def t(request: Request):
         return PlainTextResponse("I'm limited by the request size")
+
+    app.add_route("/someroute", handler)
 ```
 
 ## WSGI vs ASGI Middleware
@@ -107,9 +110,10 @@ app.add_middleware(SlowAPIASGIMiddleware)
 
 Let's use this route as an example:
 ```python
-@app.route("/some_route/{some_param}")
 def my_func(some_param):
     ...
+
+app.add_route("/someroute/{some_param}", handler)
 ```
 
 ```python
