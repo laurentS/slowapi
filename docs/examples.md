@@ -32,8 +32,8 @@ The tests show a lot of different use cases that are not all covered here.
     def t(request: Request):
         return PlainTextResponse("I'm unlimited")
 
-    limiter.exempt(handler)
-    app.add_route("/someroute", handler)
+    limiter.exempt(t)
+    app.add_route("/someroute", t)
 ```
 
 ## Disable the limiter entirely
