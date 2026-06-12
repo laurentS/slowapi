@@ -87,6 +87,9 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Re
     return response
 
 
+_UNSET = object()  # sentinel: distinguishes "not passed" from explicit None
+
+
 class Limiter:
     """
     Initializes the slowapi rate limiter.
@@ -123,7 +126,10 @@ class Limiter:
     * **key_prefix**: prefix prepended to rate limiter keys.
     * **enabled**: set to False to deactivate the limiter (default: True)
     * **config_filename**: name of the config file for Starlette from which to load settings
-     for the rate limiter. Defaults to ".env".
+     for the rate limiter. When not specified, auto-detects ".env" in the current directory
+     and loads it if found. Pass ``None`` explicitly to disable all file loading (recommended
+     for Docker and Kubernetes deployments where environment variables are injected by the
+     orchestration layer rather than from a file).
     * **key_style**: set to "url" to use the url, "endpoint" to use the view_func
     """
 
@@ -144,7 +150,7 @@ class Limiter:
         retry_after: Optional[str] = None,
         key_prefix: str = "",
         enabled: bool = True,
-        config_filename: Optional[str] = None,
+        config_filename: Optional[str] = _UNSET,  # type: ignore[assignment]
         key_style: Literal["endpoint", "url"] = "url",
     ) -> None:
         """
@@ -155,13 +161,14 @@ class Limiter:
         # app.state.limiter = self
 
         self.logger = logging.getLogger("slowapi")
-
-        dotenv_file_exists = os.path.isfile(".env")
-        self.app_config = Config(
-            ".env"
-            if dotenv_file_exists and config_filename is None
-            else config_filename
-        )
+        if config_filename is _UNSET:
+            # Backward-compatible auto-detect: load .env only if it exists
+            _config_file: Optional[str] = ".env" if os.path.isfile(".env") else None
+        else:
+            # User explicitly passed config_filename.
+            # None means "don't load any file" (e.g. Docker/K8s envs).
+            _config_file = config_filename  # type: ignore[assignment]
+        self.app_config = Config(_config_file)
 
         self.enabled = enabled
         self._default_limits = []

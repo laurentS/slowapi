@@ -4,7 +4,8 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
 from starlette.testclient import TestClient
 
-from slowapi.util import get_ipaddr
+from slowapi.extension import Limiter
+from slowapi.util import get_ipaddr, get_remote_address
 from tests import TestSlowapi
 
 
@@ -369,3 +370,58 @@ class TestDecorators(TestSlowapi):
                 )
                 == 2
             )
+
+
+# --------------------------------------------------------------------------
+# Tests for config_filename sentinel behaviour (issue #256)
+# --------------------------------------------------------------------------
+
+def test_config_filename_none_disables_dotenv_loading(tmp_path, monkeypatch):
+    """
+    Passing config_filename=None explicitly must NOT load a .env file,
+    even if one exists in the current directory.
+    This is the Docker/K8s opt-out: the user manages their own env vars.
+    """
+    env_file = tmp_path / ".env"
+    env_file.write_text("RATELIMIT_TEST_SENTINEL=loaded_from_file\n")
+    monkeypatch.chdir(tmp_path)  # make os.path.isfile(".env") see the file
+
+    limiter = Limiter(key_func=get_remote_address, config_filename=None)
+
+    assert (
+        limiter.app_config("RATELIMIT_TEST_SENTINEL", default="not_loaded")
+        == "not_loaded"
+    ), "config_filename=None should disable .env loading"
+
+
+def test_config_filename_unset_loads_dotenv_when_present(tmp_path, monkeypatch):
+    """
+    Omitting config_filename entirely should preserve the existing behaviour:
+    auto-detect and load .env when it exists in the current directory.
+    """
+    env_file = tmp_path / ".env"
+    env_file.write_text("RATELIMIT_TEST_SENTINEL=loaded_from_file\n")
+    monkeypatch.chdir(tmp_path)
+
+    limiter = Limiter(key_func=get_remote_address)
+
+    assert (
+        limiter.app_config("RATELIMIT_TEST_SENTINEL", default="not_loaded")
+        == "loaded_from_file"
+    ), "omitting config_filename should auto-load .env when present"
+
+
+def test_config_filename_unset_no_dotenv_does_not_error(tmp_path, monkeypatch):
+    """
+    Omitting config_filename when no .env file exists must not raise.
+    This covers the original issue: containers without a .env file mounted.
+    """
+    monkeypatch.chdir(tmp_path)  # tmp_path is empty, no .env present
+
+    # Must not raise any exception
+    limiter = Limiter(key_func=get_remote_address)
+
+    assert (
+        limiter.app_config("RATELIMIT_TEST_SENTINEL", default="fallback")
+        == "fallback"
+    )
