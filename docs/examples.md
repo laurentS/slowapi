@@ -32,8 +32,8 @@ The tests show a lot of different use cases that are not all covered here.
     def t(request: Request):
         return PlainTextResponse("I'm unlimited")
 
-    limiter.exempt(handler)
-    app.add_route("/someroute", handler)
+    limiter.exempt(t)
+    app.add_route("/someroute", t)
 ```
 
 ## Disable the limiter entirely
@@ -48,8 +48,8 @@ Simply pass `enabled=False` to the constructor.
     def t(request: Request):
         return PlainTextResponse("I'm unlimited")
     
-    limiter.exempt(handler)
-    app.add_route("/someroute", handler)
+    limiter.exempt(t)
+    app.add_route("/someroute", t)
 ```
 
 You can always switch this during the lifetime of the limiter:
@@ -82,7 +82,7 @@ Define a function which takes a request as parameter and returns a cost and pass
     def t(request: Request):
         return PlainTextResponse("I'm limited by the request size")
 
-    app.add_route("/someroute", handler)
+    app.add_route("/someroute", t)
 ```
 
 ## WSGI vs ASGI Middleware
@@ -113,7 +113,7 @@ Let's use this route as an example:
 def my_func(some_param):
     ...
 
-app.add_route("/someroute/{some_param}", handler)
+app.add_route("/someroute/{some_param}", my_func)
 ```
 
 ```python
