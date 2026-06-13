@@ -144,47 +144,18 @@ class TestDecorators(TestSlowapi):
                 == 429
             )
 
-    def test_endpoint_missing_request_param(self, build_fastapi_app):
-        app, limiter = build_fastapi_app(key_func=get_ipaddr)
-
-        with pytest.raises(Exception) as exc_info:
-
-            @app.get("/t3")
-            @limiter.limit("5/minute")
-            async def t3():
-                return PlainTextResponse("test")
-
-        assert exc_info.match(
-            r"""^No "request" or "websocket" argument on function .*"""
-        )
-
-    def test_endpoint_missing_request_param_sync(self, build_fastapi_app):
-        app, limiter = build_fastapi_app(key_func=get_ipaddr)
-
-        with pytest.raises(Exception) as exc_info:
-
-            @app.get("/t3_sync")
-            @limiter.limit("5/minute")
-            def t3():
-                return PlainTextResponse("test")
-
-        assert exc_info.match(
-            r"""^No "request" or "websocket" argument on function .*"""
-        )
-
     def test_endpoint_request_param_invalid(self, build_fastapi_app):
         app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
-        @app.get("/t4")
-        @limiter.limit("5/minute")
-        async def t4(request: str = None):
-            return PlainTextResponse("test")
-
         with pytest.raises(Exception) as exc_info:
-            client = TestClient(app)
-            client.get("/t4")
+
+            @app.get("/t4")
+            @limiter.limit("5/minute")
+            async def t4(request: str = None):
+                return PlainTextResponse("test")
+
         assert exc_info.match(
-            r"""parameter `request` must be an instance of starlette.requests.Request"""
+            r"Remove 'request' argument from function tests.test_fastapi_extension.t4 or add \[request : starlette.Request\] manually"
         )
 
     def test_endpoint_response_param_invalid(self, build_fastapi_app):
@@ -205,16 +176,15 @@ class TestDecorators(TestSlowapi):
     def test_endpoint_request_param_invalid_sync(self, build_fastapi_app):
         app, limiter = build_fastapi_app(key_func=get_ipaddr)
 
-        @app.get("/t5")
-        @limiter.limit("5/minute")
-        def t5(request: str = None):
-            return PlainTextResponse("test")
-
         with pytest.raises(Exception) as exc_info:
-            client = TestClient(app)
-            client.get("/t5")
+
+            @app.get("/t5")
+            @limiter.limit("5/minute")
+            def t5(request: str = None):
+                return PlainTextResponse("test")
+
         assert exc_info.match(
-            r"""parameter `request` must be an instance of starlette.requests.Request"""
+            r"Remove 'request' argument from function tests.test_fastapi_extension.t5 or add \[request : starlette.Request\] manually"
         )
 
     def test_endpoint_response_param_invalid_sync(self, build_fastapi_app):
