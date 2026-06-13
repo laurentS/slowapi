@@ -27,7 +27,9 @@ $ pip install slowapi
     limiter = Limiter(key_func=get_remote_address)
     app = Starlette()
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    @app.exception_handler(RateLimitExceeded)
+    def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:
+        return _rate_limit_exceeded_handler(request, exc)
 
     @limiter.limit("5/minute")
     async def homepage(request: Request):
@@ -49,7 +51,9 @@ The above app will have a route `t1` that will accept up to 5 requests per minut
     limiter = Limiter(key_func=get_remote_address)
     app = FastAPI()
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    @app.exception_handler(RateLimitExceeded)
+    def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:
+        return _rate_limit_exceeded_handler(request, exc)
 
     # Note: the route decorator must be above the limit decorator, not below it
     @app.get("/home")
