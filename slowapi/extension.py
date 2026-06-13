@@ -73,13 +73,22 @@ class HEADERS:
 MAX_BACKEND_CHECKS = 5
 
 
-def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:
+def _rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
     """
     Build a simple JSON response that includes the details of the rate limit
     that was hit. If no limit is hit, the countdown is added to headers.
+    
+    Handles exceptions that may not have a 'detail' attribute (e.g., ConnectionError).
     """
+    # Safely get detail attribute, fallback to exception message if not available
+    if isinstance(exc, RateLimitExceeded):
+        detail = getattr(exc, 'detail', "Rate limit exceeded")
+    else:
+        # For other exceptions (e.g., ConnectionError), use exception message
+        detail = str(exc)
+    
     response = JSONResponse(
-        {"error": f"Rate limit exceeded: {exc.detail}"}, status_code=429
+        {"error": f"Rate limit exceeded: {detail}"}, status_code=429
     )
     response = request.app.state.limiter._inject_headers(
         response, request.state.view_rate_limit
