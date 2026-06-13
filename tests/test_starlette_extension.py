@@ -175,15 +175,17 @@ class TestDecorators(TestSlowapi):
             headers_enabled=True, key_func=get_remote_address
         )
 
-        @app.route("/t1")
         @limiter.limit("10/minute")
         def t1(request: Request):
             return PlainTextResponse("test")
+        
+        app.add_route("/t1", t1)
 
-        @app.route("/t2")
         @limiter.limit("2/second; 5 per minute; 10/hour")
         def t2(request: Request):
             return PlainTextResponse("test")
+        
+        app.add_route("/t2", t2)
 
         with hiro.Timeline().freeze():
             with TestClient(app) as cli:
@@ -208,10 +210,11 @@ class TestDecorators(TestSlowapi):
             headers_enabled=True, key_func=get_remote_address
         )
 
-        @app.route("/t1")
         @limiter.limit("2/second; 10 per minute; 20/hour")
         def t(request: Request):
             return PlainTextResponse("test")
+        
+        app.add_route("/t1", t)
 
         with hiro.Timeline().freeze() as timeline:
             with TestClient(app) as cli:
@@ -233,10 +236,11 @@ class TestDecorators(TestSlowapi):
             headers_enabled=True, key_func=get_remote_address
         )
 
-        @app.route("/t1")
         @limiter.limit("1/minute")
         def t(request: Request):
             return PlainTextResponse("test")
+        
+        app.add_route("/t1", t)
 
         with hiro.Timeline().freeze() as timeline:
             with TestClient(app) as cli:
@@ -254,9 +258,10 @@ class TestDecorators(TestSlowapi):
             default_limits=["1/minute"],
         )
 
-        @app.route("/t1")
         def t1(request: Request):
             return PlainTextResponse("test")
+        
+        app.add_route("/t1", t1)
 
         with TestClient(app) as cli:
             resp = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.10"})
@@ -264,11 +269,12 @@ class TestDecorators(TestSlowapi):
             resp2 = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.10"})
             assert resp2.status_code == 429
 
-        @app.route("/t2")
-        @limiter.exempt
         def t2(request: Request):
             """Exempt a sync route"""
             return PlainTextResponse("test")
+        
+        limiter.exempt(t2)
+        app.add_route("/t2", t2)
 
         with TestClient(app) as cli:
             resp = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.10"})
@@ -276,11 +282,12 @@ class TestDecorators(TestSlowapi):
             resp2 = cli.get("/t2", headers={"X_FORWARDED_FOR": "127.0.0.10"})
             assert resp2.status_code == 200
 
-        @app.route("/t3")
-        @limiter.exempt
         async def t3(request: Request):
             """Exempt an async route"""
             return PlainTextResponse("test")
+        
+        limiter.exempt(t3)
+        app.add_route("/t3", t3)
 
         with TestClient(app) as cli:
             resp = cli.get("/t3", headers={"X_FORWARDED_FOR": "127.0.0.10"})
