@@ -1,9 +1,9 @@
 import asyncio
 import logging
+from unittest.mock import mock  # type: ignore
 
 import pytest
 from fastapi import FastAPI
-from mock import mock  # type: ignore
 from starlette.applications import Starlette
 from starlette.requests import Request
 
