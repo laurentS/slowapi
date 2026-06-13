@@ -56,6 +56,11 @@ You can always switch this during the lifetime of the limiter:
     limiter.enabled = False
 ```
 
+#### Note: config file is set to ".env" by default. Therefore, if you have a .env file setup for something else already, specify the config_filename parameter
+```python
+limiter = Limiter(key_func=get_remote_address, default_limits=["1/minute"], config_filename=".your_config_file")
+```
+
 ## Use redis as backend for the limiter
 
 ```python
