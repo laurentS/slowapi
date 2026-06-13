@@ -156,6 +156,7 @@ class _ASGIMiddlewareResponder:
         self.error_response: Optional[Response] = None
         self.initial_message: Message = {}
         self.inject_headers = False
+        self.started = False
 
     async def send_wrapper(self, message: Message) -> None:
         if message["type"] == "http.response.start":
@@ -164,18 +165,24 @@ class _ASGIMiddlewareResponder:
             self.initial_message = message
 
         elif message["type"] == "http.response.body":
-            if self.error_response:
-                self.initial_message["status"] = self.error_response.status_code
+            if not self.started:
+                # Only modify and send the initial message once, on the first body chunk.
+                # Streaming responses (e.g. FileResponse) send multiple body chunks;
+                # re-sending http.response.start on each would cause
+                # "RuntimeError: ASGI flow error: Response already started".
+                self.started = True
 
-            if self.inject_headers:
-                headers = MutableHeaders(raw=self.initial_message["headers"])
-                headers = self.limiter._inject_asgi_headers(
-                    headers, self.request.state.view_rate_limit
-                )
+                if self.error_response:
+                    self.initial_message["status"] = self.error_response.status_code
 
-            # send the http.response.start message just before the http.response.body one,
-            # now that the headers are updated
-            await self.send(self.initial_message)
+                if self.inject_headers:
+                    headers = MutableHeaders(raw=self.initial_message["headers"])
+                    headers = self.limiter._inject_asgi_headers(
+                        headers, self.request.state.view_rate_limit
+                    )
+
+                await self.send(self.initial_message)
+
             await self.send(message)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
