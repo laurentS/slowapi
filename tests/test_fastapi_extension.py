@@ -3,6 +3,7 @@ import pytest  # type: ignore
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
 from starlette.testclient import TestClient
+from fastapi import FastAPI
 
 from slowapi.util import get_ipaddr
 from tests import TestSlowapi
@@ -368,4 +369,22 @@ class TestDecorators(TestSlowapi):
                     "LIMITER/mock/tests.test_fastapi_extension.t1_func/1/1/minute"
                 )
                 == 2
+            )
+
+    def test_subapp_limiter(self, build_fastapi_app):
+        app, limiter = build_fastapi_app(
+            key_func=get_ipaddr, application_limits=["50/minute"]
+        )
+        subapp = FastAPI()
+        app.mount("/sub", subapp)
+
+        @subapp.get("/t1")
+        async def t1(request: Request):
+            return PlainTextResponse("test subapp")
+
+        client = TestClient(app)
+        for i in range(0, 100):
+            response = client.get("/sub/t1")
+            assert (
+                response.status_code == 200 if i < 50 else response.status_code == 429
             )
