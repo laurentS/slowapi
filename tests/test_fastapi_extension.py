@@ -20,7 +20,7 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
 
     def test_single_decorator_with_headers(self, build_fastapi_app):
         app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
@@ -33,7 +33,7 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
             assert (
                 response.headers.get("X-RateLimit-Limit") is not None if i < 5 else True
             )
@@ -50,7 +50,7 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
 
     def test_single_decorator_not_response_with_headers(self, build_fastapi_app):
         app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
@@ -63,7 +63,7 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
             assert (
                 response.headers.get("X-RateLimit-Limit") is not None if i < 5 else True
             )
@@ -84,7 +84,7 @@ class TestDecorators(TestSlowapi):
             cli = TestClient(app)
             for i in range(0, 100):
                 response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
-                assert response.status_code == 200 if i < 50 else 429
+                assert response.status_code == (200 if i < 50 else 429)
             for i in range(50):
                 assert cli.get("/t1").status_code == 200
 
@@ -109,7 +109,7 @@ class TestDecorators(TestSlowapi):
             cli = TestClient(app)
             for i in range(0, 100):
                 response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
-                assert response.status_code == 200 if i < 50 else 429
+                assert response.status_code == (200 if i < 50 else 429)
             for i in range(50):
                 assert cli.get("/t1").status_code == 200
 
@@ -134,7 +134,7 @@ class TestDecorators(TestSlowapi):
             cli = TestClient(app)
             for i in range(0, 100):
                 response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
-                assert response.status_code == 200 if i < 50 else 429
+                assert response.status_code == (200 if i < 50 else 429)
             for i in range(50):
                 assert cli.get("/t1").status_code == 200
 
@@ -253,11 +253,11 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
 
         for i in range(0, 20):
             response = client.get("/t1", headers={"TOKEN": "secret"})
-            assert response.status_code == 200 if i < 10 else 429
+            assert response.status_code == (200 if i < 10 else 429)
 
     def test_disabled_limiter(self, build_fastapi_app):
         """
@@ -308,10 +308,10 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1")
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
 
             response = client.get("/t2")
-            assert response.status_code == 200 if i < 3 else 429
+            assert response.status_code == (200 if i < 3 else 429)
 
     def test_callable_cost(self, build_fastapi_app):
         app, limiter = build_fastapi_app(key_func=get_ipaddr)
@@ -331,10 +331,10 @@ class TestDecorators(TestSlowapi):
         client = TestClient(app)
         for i in range(0, 10):
             response = client.get("/t1", headers={"foo": "10"})
-            assert response.status_code == 200 if i < 5 else 429
+            assert response.status_code == (200 if i < 5 else 429)
 
             response = client.get("/t2", headers={"foo": "5"})
-            assert response.status_code == 200 if i < 6 else 429
+            assert response.status_code == (200 if i < 6 else 429)
 
     @pytest.mark.parametrize(
         "key_style",
