@@ -20,6 +20,19 @@ def _find_route_handler(
 ) -> Optional[Callable]:
     handler = None
     for route in routes:
+        effective_route_contexts = getattr(route, "effective_route_contexts", None)
+        if effective_route_contexts is not None:
+            # FastAPI >= 0.137 includes routers lazily: `app.routes` holds a wrapper
+            # instead of the included routes, and the wrapper has no `endpoint`, so the
+            # loop below would not find any handler for those paths. The routes are
+            # reachable one level down, and each context exposes both `matches()` and
+            # `endpoint`, so it can be treated as a route by this same lookup.
+            # `getattr(..., None)` keeps this a no-op on plain Starlette apps and on
+            # FastAPI versions that include routers eagerly.
+            inner = _find_route_handler(list(effective_route_contexts()), scope)
+            if inner is not None:
+                handler = inner
+            continue
         match, _ = route.matches(scope)
         if match == Match.FULL and hasattr(route, "endpoint"):
             handler = route.endpoint  # type: ignore
