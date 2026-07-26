@@ -1,9 +1,12 @@
 import hiro  # type: ignore
 import pytest  # type: ignore
+from fastapi import APIRouter
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
+from starlette.routing import Match
 from starlette.testclient import TestClient
 
+from slowapi.middleware import _find_route_handler
 from slowapi.util import get_ipaddr
 from tests import TestSlowapi
 
@@ -369,3 +372,48 @@ class TestDecorators(TestSlowapi):
                 )
                 == 2
             )
+
+
+def test_find_route_handler_resolves_lazily_included_routes():
+    """FastAPI >= 0.137 includes routers lazily, exposing the included routes through
+    `effective_route_contexts()` instead of putting them in `app.routes`. The lookup has
+    to follow that indirection, otherwise it returns None and every request to an
+    included route is treated as exempt."""
+
+    def included_endpoint(request: Request) -> Response:
+        return PlainTextResponse("test")
+
+    class _Context:
+        endpoint = staticmethod(included_endpoint)
+
+        def matches(self, scope):
+            return Match.FULL, {}
+
+    class _LazilyIncludedRouter:
+        def effective_route_contexts(self):
+            return [_Context()]
+
+        def matches(self, scope):  # pragma: no cover - never reached for this route type
+            return Match.NONE, {}
+
+    scope = {"type": "http", "method": "GET", "path": "/included"}
+    assert _find_route_handler([_LazilyIncludedRouter()], scope) is included_endpoint
+
+
+class TestIncludedRouter(TestSlowapi):
+    def test_default_limits_apply_to_routes_from_include_router(self, build_fastapi_app):
+        """Default limits applied by the middleware must reach routes added through
+        `include_router`, not only routes declared directly on the app."""
+        app, limiter = build_fastapi_app(key_func=get_ipaddr, default_limits=["3/minute"])
+
+        router = APIRouter()
+
+        @router.get("/included")
+        async def included(request: Request):
+            return PlainTextResponse("test")
+
+        app.include_router(router)
+
+        client = TestClient(app)
+        codes = [client.get("/included").status_code for _ in range(0, 5)]
+        assert codes == [200, 200, 200, 429, 429]
