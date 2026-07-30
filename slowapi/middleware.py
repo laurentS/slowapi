@@ -18,12 +18,35 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 def _find_route_handler(
     routes: Iterable[BaseRoute], scope: Scope
 ) -> Optional[Callable]:
-    handler = None
+    # FastAPI >= 0.140 uses _IncludedRouter internally.
+    # Resolve nested candidates recursively to find endpoint handlers.
+
     for route in routes:
         match, _ = route.matches(scope)
-        if match == Match.FULL and hasattr(route, "endpoint"):
-            handler = route.endpoint  # type: ignore
-    return handler
+
+        if match != Match.FULL:
+            continue
+
+        endpoint = getattr(route, "endpoint", None)
+
+        if endpoint:
+            return endpoint
+
+        candidates = getattr(route, "_effective_candidates", None)
+
+        if candidates:
+            handler = _find_route_handler(candidates, scope)
+            if handler:
+                return handler
+
+        nested_routes = getattr(route, "routes", None)
+
+        if nested_routes:
+            handler = _find_route_handler(nested_routes, scope)
+            if handler:
+                return handler
+
+    return None
 
 
 def _get_route_name(handler: Callable):
