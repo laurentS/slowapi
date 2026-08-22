@@ -79,7 +79,8 @@ def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Re
     that was hit. If no limit is hit, the countdown is added to headers.
     """
     response = JSONResponse(
-        {"error": f"Rate limit exceeded: {exc.detail}"}, status_code=429
+        {"error": f"Rate limit exceeded: {getattr(exc, 'detail', str(exc))}"},
+        status_code=429,
     )
     response = request.app.state.limiter._inject_headers(
         response, request.state.view_rate_limit
@@ -387,7 +388,7 @@ class Limiter:
                 window_stats: Tuple[int, int] = self.limiter.get_window_stats(
                     current_limit[0], *current_limit[1]
                 )
-                reset_in = 1 + window_stats[0]
+                reset_in = int(1 + window_stats[0])
                 response.headers.append(
                     self._header_mapping[HEADERS.LIMIT], str(current_limit[0].amount)
                 )
@@ -443,7 +444,7 @@ class Limiter:
                 window_stats: Tuple[int, int] = self.limiter.get_window_stats(
                     current_limit[0], *current_limit[1]
                 )
-                reset_in = 1 + window_stats[0]
+                reset_in = int(1 + window_stats[0])
                 headers[self._header_mapping[HEADERS.LIMIT]] = str(
                     current_limit[0].amount
                 )
@@ -717,7 +718,7 @@ class Limiter:
                     f'No "request" or "websocket" argument on function "{func}"'
                 )
 
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
                 # Handle async request/response functions.
                 @functools.wraps(func)
                 async def async_wrapper(*args: Any, **kwargs: Any) -> Response:
@@ -874,7 +875,7 @@ class Limiter:
 
         self._exempt_routes.add(name)
 
-        if asyncio.iscoroutinefunction(obj):
+        if inspect.iscoroutinefunction(obj):
 
             @wraps(obj)
             async def __async_inner(*a, **k):
