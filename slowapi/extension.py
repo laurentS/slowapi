@@ -388,7 +388,7 @@ class Limiter:
                 window_stats: Tuple[int, int] = self.limiter.get_window_stats(
                     current_limit[0], *current_limit[1]
                 )
-                reset_in = 1 + window_stats[0]
+                reset_in = int(1 + window_stats[0])
                 response.headers.append(
                     self._header_mapping[HEADERS.LIMIT], str(current_limit[0].amount)
                 )
@@ -444,7 +444,7 @@ class Limiter:
                 window_stats: Tuple[int, int] = self.limiter.get_window_stats(
                     current_limit[0], *current_limit[1]
                 )
-                reset_in = 1 + window_stats[0]
+                reset_in = int(1 + window_stats[0])
                 headers[self._header_mapping[HEADERS.LIMIT]] = str(
                     current_limit[0].amount
                 )
