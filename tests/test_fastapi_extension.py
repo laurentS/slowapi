@@ -1,6 +1,7 @@
 import hiro  # type: ignore
 import pytest  # type: ignore
 from starlette.requests import Request
+from fastapi import APIRouter
 from starlette.responses import PlainTextResponse, Response
 from starlette.testclient import TestClient
 
@@ -369,3 +370,27 @@ class TestDecorators(TestSlowapi):
                 )
                 == 2
             )
+
+    def test_indexerror_class_route_args(self, build_fastapi_app):
+        """When using class-based routes, we search for 'request' in the kwargs and args of the decorated function
+        We previously checked 'args' before 'kwargs', causing an IndexError when 'request' was only in kwargs.
+        This test checks that no IndexError is raised, and that arguments are correctly parsed in these cases.
+        This is not an issue in non-class-based routes.
+        """
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
+
+        class NewRoutes:
+            def __init__(self):
+                self.router = APIRouter()
+                self.router.add_api_route(
+                    "/t1", self.check_request_kwargs, methods=["GET"]
+                )
+
+            @limiter.limit("5/minute")
+            def check_request_kwargs(self, request: Request):
+                return {"key": "value"}
+
+        app.include_router(NewRoutes().router)
+
+        client = TestClient(app)
+        client.get(url="/t1")
