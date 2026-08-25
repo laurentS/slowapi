@@ -724,7 +724,7 @@ class Limiter:
                     # get the request object from the decorated endpoint function
                     if self.enabled:
                         request = kwargs.get("request")
-                        if not request:
+                        if request is None:
                             request = args[idx] if args else None
                         if not isinstance(request, Request):
                             raise Exception(
@@ -759,7 +759,7 @@ class Limiter:
                     # get the request object from the decorated endpoint function
                     if self.enabled:
                         request = kwargs.get("request")
-                        if not request:
+                        if request is None:
                             request = args[idx] if args else None
                         if not isinstance(request, Request):
                             raise Exception(
