@@ -770,14 +770,17 @@ files = [
 
 [[package]]
 name = "mkautodoc"
-version = "0.1.0"
+version = "0.2.0"
 description = "AutoDoc for MarkDown"
 category = "dev"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "mkautodoc-0.1.0.tar.gz", hash = "sha256:7c2595f40276b356e576ce7e343338f8b4fa1e02ea904edf33fadf82b68ca67c"},
+    {file = "mkautodoc-0.2.0.tar.gz", hash = "sha256:b6e0c89804ba39d453ce5795eb040e5615756f90438ac04f47e97893a86a10cd"},
 ]
+
+[package.dependencies]
+Markdown = "*"
 
 [[package]]
 name = "mkdocs"
@@ -1501,4 +1504,4 @@ redis = ["redis"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7,<4.0"
-content-hash = "b0fbb75051b47ba71537e15c61e7bbbccd8edf91d806dc2ce83be350ed711297"
+content-hash = "f85709b6aced8a4f91dfeb5cb7bf824baa420f6c8a034a31879146507a25fe38"
