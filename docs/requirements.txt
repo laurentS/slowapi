@@ -16,7 +16,7 @@ isort==4.3.21
 jinja2==2.11.3
 joblib==0.16.0; python_version > "2.7"
 limits==1.5.1
-livereload==2.6.3
+livereload==2.7.1
 lunr==0.5.8
 lxml==4.9.1
 markdown==3.2.2
