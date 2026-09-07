@@ -565,7 +565,7 @@ class Limiter:
         view_func = endpoint_func
 
         endpoint_func_name = (
-            f"{view_func.__module__}.{view_func.__name__}" if view_func else ""
+            f"{view_func.__module__}.{view_func.__qualname__}" if view_func else ""
         )
         _endpoint_key = endpoint_url if self._key_style == "url" else endpoint_func_name
         # cases where we don't need to check the limits
@@ -666,7 +666,7 @@ class Limiter:
 
         def decorator(func: Callable[..., Response]):
             keyfunc = key_func or self._key_func
-            name = f"{func.__module__}.{func.__name__}"
+            name = f"{func.__module__}.{func.__qualname__}"
             dynamic_limit = None
             static_limits: List[Limit] = []
             if callable(limit_value):
@@ -870,7 +870,7 @@ class Limiter:
         """
         Decorator to mark a view as exempt from rate limits.
         """
-        name = "%s.%s" % (obj.__module__, obj.__name__)
+        name = "%s.%s" % (obj.__module__, obj.__qualname__)
 
         self._exempt_routes.add(name)
 

@@ -22,6 +22,89 @@ class TestDecorators(TestSlowapi):
             response = client.get("/t1")
             assert response.status_code == 200 if i < 5 else 429
 
+    @pytest.mark.parametrize("key_style", ["url", "endpoint"])
+    @pytest.mark.parametrize(
+        "limit_value", ["2/minute", lambda: "2/minute"], ids=["static", "dynamic"]
+    )
+    def test_same_named_class_methods_have_independent_limits(
+        self, build_fastapi_app, key_style, limit_value
+    ):
+        app, limiter = build_fastapi_app(key_style=key_style)
+
+        class First:
+            @staticmethod
+            @app.get("/first")
+            @limiter.limit(limit_value)
+            async def index(request: Request):
+                return PlainTextResponse("first")
+
+        class Second:
+            @staticmethod
+            @app.get("/second")
+            @limiter.limit(limit_value)
+            def index(request: Request):
+                return PlainTextResponse("second")
+
+        with hiro.Timeline().freeze(), TestClient(app) as client:
+            assert [client.get("/first").status_code for _ in range(3)] == [
+                200,
+                200,
+                429,
+            ]
+            assert [client.get("/second").status_code for _ in range(3)] == [
+                200,
+                200,
+                429,
+            ]
+
+    def test_same_named_class_method_exemption_does_not_affect_default_limit(
+        self, build_fastapi_app
+    ):
+        app, limiter = build_fastapi_app(default_limits=["1/minute"])
+
+        class Exempt:
+            @staticmethod
+            @app.get("/exempt")
+            @limiter.exempt
+            async def index(request: Request):
+                return PlainTextResponse("exempt")
+
+        class Limited:
+            @staticmethod
+            @app.get("/limited")
+            def index(request: Request):
+                return PlainTextResponse("limited")
+
+        with hiro.Timeline().freeze(), TestClient(app) as client:
+            assert [client.get("/exempt").status_code for _ in range(2)] == [200, 200]
+            assert [client.get("/limited").status_code for _ in range(2)] == [200, 429]
+
+    def test_same_named_class_methods_keep_decorated_and_default_limits_separate(
+        self, build_fastapi_app
+    ):
+        app, limiter = build_fastapi_app(default_limits=["1/minute"])
+
+        class Decorated:
+            @staticmethod
+            @app.get("/decorated")
+            @limiter.limit("2/minute")
+            async def index(request: Request):
+                return PlainTextResponse("decorated")
+
+        class Default:
+            @staticmethod
+            @app.get("/default")
+            def index(request: Request):
+                return PlainTextResponse("default")
+
+        with hiro.Timeline().freeze(), TestClient(app) as client:
+            assert [client.get("/decorated").status_code for _ in range(3)] == [
+                200,
+                200,
+                429,
+            ]
+            assert [client.get("/default").status_code for _ in range(2)] == [200, 429]
+
     def test_single_decorator_with_headers(self, build_fastapi_app):
         app, limiter = build_fastapi_app(key_func=get_ipaddr, headers_enabled=True)
 
@@ -365,7 +448,8 @@ class TestDecorators(TestSlowapi):
             # check that we counted 2 requests, even though we had a different value for "my_param"
             assert (
                 limiter._storage.get(
-                    "LIMITER/mock/tests.test_fastapi_extension.t1_func/1/1/minute"
+                    "LIMITER/mock/tests.test_fastapi_extension."
+                    "TestDecorators.test_key_style.<locals>.t1_func/1/1/minute"
                 )
                 == 2
             )

@@ -408,7 +408,8 @@ class TestDecorators(TestSlowapi):
             # check that we counted 2 requests, even though we had a different value for "my_param"
             assert (
                 limiter._storage.get(
-                    "LIMITER/mock/tests.test_starlette_extension.t1_func/1/1/minute"
+                    "LIMITER/mock/tests.test_starlette_extension."
+                    "TestDecorators.test_key_style.<locals>.t1_func/1/1/minute"
                 )
                 == 2
             )
