@@ -126,8 +126,12 @@ When calling the `/some_route/my_param` endpoint would result with a key shaped 
 limiter = Limiter(key_func=lambda: "mock", default_limits=["1/minute"], key_style="endpoint")
 ```
 
-When initializing the Limiter object with `key_style="endpoint"`, it will use the function name as part of the storage key.
+When initializing the Limiter object with `key_style="endpoint"`, it will use the function's module and qualified name (`__qualname__`) as part of the storage key.
+This distinguishes methods such as `First.index` and `Second.index` defined in the same module.
 
 When calling the `/some_route/my_param` endpoint would result with a key shaped like: `LIMITER/mock/{module}.my_func/1/1/minute`
 
 > This means, that if the route contains some URL parameter, calling the endpoint with different parameters will still share the limitations, since the view function is the same.
+
+> When upgrading from a version that uses `__name__`, class methods and nested functions use new storage keys, so their existing counters are not carried over.
+> Module-level functions and `key_style="url"` retain their storage keys.
