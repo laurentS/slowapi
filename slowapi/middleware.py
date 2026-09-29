@@ -23,6 +23,7 @@ def _find_route_handler(
         match, _ = route.matches(scope)
         if match == Match.FULL and hasattr(route, "endpoint"):
             handler = route.endpoint  # type: ignore
+            break
     return handler
 
 
