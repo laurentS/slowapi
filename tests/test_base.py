@@ -86,6 +86,37 @@ def test_invalid_boolean_config_is_rejected(config_environment, monkeypatch, set
         Limiter(key_func=get_remote_address, enabled=False)
 
 
+@pytest.mark.parametrize(
+    "default, value, expected",
+    [
+        (0, "12", 12),
+        (0, "0", 0),
+        (0.0, "1.5", 1.5),
+        (0.0, "0", 0.0),
+        ("", "text", "text"),
+        (None, "12", "12"),
+    ],
+)
+def test_config_values_use_default_type(
+    config_environment, monkeypatch, default, value, expected
+):
+    monkeypatch.setenv("TEST_SETTING", value)
+    limiter = Limiter(key_func=get_remote_address)
+
+    result = limiter.get_app_config("TEST_SETTING", default)
+
+    assert result == expected
+    assert type(result) is type(expected)
+
+
+@pytest.mark.parametrize("default", [0, 0.0, "", None])
+def test_missing_config_preserves_default(config_environment, monkeypatch, default):
+    monkeypatch.delenv("TEST_SETTING", raising=False)
+    limiter = Limiter(key_func=get_remote_address)
+
+    assert limiter.get_app_config("TEST_SETTING", default) is default
+
+
 class TestBooleanConfig(TestSlowapi):
     @pytest.mark.parametrize("value", ["false", "true"])
     def test_headers_configuration_on_responses(

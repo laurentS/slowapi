@@ -338,12 +338,11 @@ class Limiter:
         """
         Place holder until we find a better way to load config from app
         """
-        if default_value is False:
-            return cast(T, self.app_config(key, default=False, cast=bool))
-        return (
+        return cast(
+            T,
             self.app_config(key, default=default_value, cast=type(default_value))
-            if default_value
-            else self.app_config(key, default=default_value)
+            if default_value is not None
+            else self.app_config(key, default=default_value),
         )
 
     def __should_check_backend(self) -> bool:
