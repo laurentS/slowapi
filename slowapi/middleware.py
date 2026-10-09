@@ -15,14 +15,36 @@ from starlette.types import ASGIApp, Message, Scope, Receive, Send
 from slowapi import Limiter, _rate_limit_exceeded_handler
 
 
+def _get_nested_routes(route: BaseRoute) -> Optional[Iterable[BaseRoute]]:
+    # FastAPI >= 0.137 wraps included routers in an `_IncludedRouter` route:
+    # `matches()` only returns a match with an empty child scope, and the
+    # combined include prefixes live in `effective_candidates()`. Prefer it so
+    # that routes are matched against their effective (prefixed) paths.
+    effective_candidates = getattr(route, "effective_candidates", None)
+    if callable(effective_candidates):
+        return effective_candidates()
+
+    nested_routes = getattr(route, "routes", None)
+    if nested_routes is not None:
+        return nested_routes
+
+    original_router = getattr(route, "original_router", None)
+    return getattr(original_router, "routes", None)
+
+
 def _find_route_handler(
     routes: Iterable[BaseRoute], scope: Scope
 ) -> Optional[Callable]:
     handler = None
     for route in routes:
-        match, _ = route.matches(scope)
+        match, child_scope = route.matches(scope)
         if match == Match.FULL and hasattr(route, "endpoint"):
             handler = route.endpoint  # type: ignore
+        elif match in (Match.FULL, Match.PARTIAL):
+            nested_routes = _get_nested_routes(route)
+            if nested_routes is not None:
+                nested_scope = {**scope, **child_scope}
+                handler = _find_route_handler(nested_routes, nested_scope) or handler
     return handler
 
 
