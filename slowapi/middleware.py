@@ -16,6 +16,14 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 
 
 def _get_nested_routes(route: BaseRoute) -> Optional[Iterable[BaseRoute]]:
+    # FastAPI >= 0.137 wraps included routers in an `_IncludedRouter` route:
+    # `matches()` only returns a match with an empty child scope, and the
+    # combined include prefixes live in `effective_candidates()`. Prefer it so
+    # that routes are matched against their effective (prefixed) paths.
+    effective_candidates = getattr(route, "effective_candidates", None)
+    if callable(effective_candidates):
+        return effective_candidates()
+
     nested_routes = getattr(route, "routes", None)
     if nested_routes is not None:
         return nested_routes
