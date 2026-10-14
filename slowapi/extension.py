@@ -561,6 +561,8 @@ class Limiter:
         """
         Determine if the request is within limits
         """
+        request.state.view_rate_limit = None  # used by middlewares and decorators
+
         endpoint_url = request["path"] or ""
         view_func = endpoint_func
 
