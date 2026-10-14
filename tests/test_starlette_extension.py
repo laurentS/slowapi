@@ -2,6 +2,7 @@ import time
 
 import hiro  # type: ignore
 import pytest  # type: ignore
+from mock import mock  # type: ignore
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
@@ -313,6 +314,58 @@ class TestDecorators(TestSlowapi):
                 cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
                 == 429
             )
+
+    def test_swallowed_storage_error(self, build_starlette_app):
+        app, limiter = build_starlette_app(
+            key_func=get_ipaddr, default_limits=["5/minute"], swallow_errors=True
+        )
+
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+
+        with mock.patch.object(
+            limiter._limiter, "hit", side_effect=ConnectionError("storage down")
+        ):
+            response = TestClient(app).get("/t1")
+
+        assert response.status_code == 200
+        assert response.text == "test"
+
+    def test_swallowed_storage_error_decorator_async(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr, swallow_errors=True)
+
+        @limiter.limit("5/minute")
+        async def t1(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+
+        with mock.patch.object(
+            limiter._limiter, "hit", side_effect=ConnectionError("storage down")
+        ):
+            response = TestClient(app).get("/t1")
+
+        assert response.status_code == 200
+        assert response.text == "test"
+
+    def test_swallowed_storage_error_decorator_sync(self, build_starlette_app):
+        app, limiter = build_starlette_app(key_func=get_ipaddr, swallow_errors=True)
+
+        @limiter.limit("5/minute")
+        def t1(request: Request):
+            return PlainTextResponse("test")
+
+        app.add_route("/t1", t1)
+
+        with mock.patch.object(
+            limiter._limiter, "hit", side_effect=ConnectionError("storage down")
+        ):
+            response = TestClient(app).get("/t1")
+
+        assert response.status_code == 200
+        assert response.text == "test"
 
     def test_cost(self, build_starlette_app):
         app, limiter = build_starlette_app(key_func=get_ipaddr)
