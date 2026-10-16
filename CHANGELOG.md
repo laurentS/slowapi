@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- Support single string or callable for `default_limits`, `application_limits`, and `in_memory_fallback` (#239)
+
 ## [0.1.10] - 2026-06-13
 
 ### Changed

@@ -18,6 +18,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Sequence,
     Set,
     Tuple,
     TypeVar,
@@ -41,6 +42,17 @@ from .wrappers import Limit, LimitGroup
 T = TypeVar("T")
 # Define an alias for the most commonly used type
 StrOrCallableStr = Union[str, Callable[..., str]]
+
+
+def _normalize_limits(
+    limits: Union[Sequence[StrOrCallableStr], StrOrCallableStr, None],
+) -> List[StrOrCallableStr]:
+    """Coerce single limit string, callable, or sequence into a list of limits."""
+    if limits is None:
+        return []
+    if isinstance(limits, (str, bytes)) or callable(limits):
+        return [limits]
+    return list(limits)
 
 
 class C:
@@ -131,15 +143,15 @@ class Limiter:
         self,
         # app: Starlette = None,
         key_func: Callable[..., str],
-        default_limits: List[StrOrCallableStr] = [],
-        application_limits: List[StrOrCallableStr] = [],
+        default_limits: Union[Sequence[StrOrCallableStr], StrOrCallableStr] = [],
+        application_limits: Union[Sequence[StrOrCallableStr], StrOrCallableStr] = [],
         headers_enabled: bool = False,
         strategy: Optional[str] = None,
         storage_uri: Optional[str] = None,
         storage_options: Dict[str, str] = {},
         auto_check: bool = True,
         swallow_errors: bool = False,
-        in_memory_fallback: List[StrOrCallableStr] = [],
+        in_memory_fallback: Union[Sequence[StrOrCallableStr], StrOrCallableStr] = [],
         in_memory_fallback_enabled: bool = False,
         retry_after: Optional[str] = None,
         key_prefix: str = "",
@@ -163,12 +175,16 @@ class Limiter:
             else config_filename
         )
 
+        norm_default_limits = _normalize_limits(default_limits)
+        norm_application_limits = _normalize_limits(application_limits)
+        norm_in_memory_fallback = _normalize_limits(in_memory_fallback)
+
         self.enabled = enabled
-        self._default_limits = []
-        self._application_limits = []
+        self._default_limits: List[LimitGroup] = []
+        self._application_limits: List[LimitGroup] = []
         self._in_memory_fallback: List[LimitGroup] = []
         self._in_memory_fallback_enabled = (
-            in_memory_fallback_enabled or len(in_memory_fallback) > 0
+            in_memory_fallback_enabled or len(norm_in_memory_fallback) > 0
         )
         self._exempt_routes: Set[str] = set()
         self._request_filters: List[Callable[..., bool]] = []
@@ -185,37 +201,38 @@ class Limiter:
         self._key_prefix = key_prefix
         self._key_style = key_style
 
-        for limit in set(default_limits):
-            self._default_limits.extend(
-                [
-                    LimitGroup(
-                        limit, self._key_func, None, False, None, None, None, 1, False
-                    )
-                ]
+        seen_default_limits: Set[Any] = set()
+        for limit in norm_default_limits:
+            try:
+                if limit in seen_default_limits:
+                    continue
+                seen_default_limits.add(limit)
+            except TypeError:
+                pass
+            self._default_limits.append(
+                LimitGroup(
+                    limit, self._key_func, None, False, None, None, None, 1, False
+                )
             )
-        for limit in application_limits:
-            self._application_limits.extend(
-                [
-                    LimitGroup(
-                        limit,
-                        self._key_func,
-                        "global",
-                        False,
-                        None,
-                        None,
-                        None,
-                        1,
-                        False,
-                    )
-                ]
+        for limit in norm_application_limits:
+            self._application_limits.append(
+                LimitGroup(
+                    limit,
+                    self._key_func,
+                    "global",
+                    False,
+                    None,
+                    None,
+                    None,
+                    1,
+                    False,
+                )
             )
-        for limit in in_memory_fallback:
-            self._in_memory_fallback.extend(
-                [
-                    LimitGroup(
-                        limit, self._key_func, None, False, None, None, None, 1, False
-                    )
-                ]
+        for limit in norm_in_memory_fallback:
+            self._in_memory_fallback.append(
+                LimitGroup(
+                    limit, self._key_func, None, False, None, None, None, 1, False
+                )
             )
         self._route_limits: Dict[str, List[Limit]] = {}
         self._dynamic_route_limits: Dict[str, List[LimitGroup]] = {}

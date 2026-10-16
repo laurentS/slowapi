@@ -6,6 +6,7 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
 
+from slowapi.extension import Limiter
 from slowapi.util import get_ipaddr, get_remote_address
 from tests import TestSlowapi
 
@@ -412,3 +413,66 @@ class TestDecorators(TestSlowapi):
                 )
                 == 2
             )
+
+    @pytest.mark.parametrize(
+        "limit_param",
+        [
+            "1/minute",
+            lambda: "1/minute",
+        ],
+    )
+    def test_default_limits_string_and_callable(self, build_starlette_app, limit_param):
+        app, _ = build_starlette_app(
+            key_func=get_remote_address,
+            default_limits=limit_param,
+        )
+
+        @app.route("/default-limit")
+        def endpoint(request: Request):
+            return PlainTextResponse("test")
+
+        with TestClient(app) as cli:
+            resp1 = cli.get("/default-limit")
+            assert resp1.status_code == 200
+            resp2 = cli.get("/default-limit")
+            assert resp2.status_code == 429
+
+    @pytest.mark.parametrize(
+        "limit_param",
+        [
+            "1/minute",
+            lambda: "1/minute",
+        ],
+    )
+    def test_application_limits_string_and_callable(
+        self, build_starlette_app, limit_param
+    ):
+        app, _ = build_starlette_app(
+            key_func=get_remote_address,
+            application_limits=limit_param,
+        )
+
+        @app.route("/app-limit")
+        def endpoint(request: Request):
+            return PlainTextResponse("test")
+
+        with TestClient(app) as cli:
+            resp1 = cli.get("/app-limit")
+            assert resp1.status_code == 200
+            resp2 = cli.get("/app-limit")
+            assert resp2.status_code == 429
+
+    @pytest.mark.parametrize(
+        "fallback_param",
+        [
+            "1/minute",
+            lambda: "1/minute",
+        ],
+    )
+    def test_in_memory_fallback_string_and_callable(self, fallback_param):
+        limiter = Limiter(
+            key_func=get_remote_address,
+            in_memory_fallback=fallback_param,
+        )
+        assert len(limiter._in_memory_fallback) == 1
+        assert limiter._in_memory_fallback_enabled is True
