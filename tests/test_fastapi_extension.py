@@ -369,3 +369,51 @@ class TestDecorators(TestSlowapi):
                 )
                 == 2
             )
+
+    @pytest.mark.parametrize(
+        "limit_param",
+        [
+            "1/minute",
+            lambda: "1/minute",
+        ],
+    )
+    def test_default_limits_string_and_callable(self, build_fastapi_app, limit_param):
+        app, _ = build_fastapi_app(
+            key_func=get_ipaddr,
+            default_limits=limit_param,
+        )
+
+        @app.get("/default-limit")
+        async def endpoint(request: Request):
+            return PlainTextResponse("test")
+
+        client = TestClient(app)
+        resp1 = client.get("/default-limit")
+        assert resp1.status_code == 200
+        resp2 = client.get("/default-limit")
+        assert resp2.status_code == 429
+
+    @pytest.mark.parametrize(
+        "limit_param",
+        [
+            "1/minute",
+            lambda: "1/minute",
+        ],
+    )
+    def test_application_limits_string_and_callable(
+        self, build_fastapi_app, limit_param
+    ):
+        app, _ = build_fastapi_app(
+            key_func=get_ipaddr,
+            application_limits=limit_param,
+        )
+
+        @app.get("/app-limit")
+        async def endpoint(request: Request):
+            return PlainTextResponse("test")
+
+        client = TestClient(app)
+        resp1 = client.get("/app-limit")
+        assert resp1.status_code == 200
+        resp2 = client.get("/app-limit")
+        assert resp2.status_code == 429
