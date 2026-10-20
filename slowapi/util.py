@@ -8,10 +8,8 @@ def get_ipaddr(request: Request) -> str:
      Note that a more robust method for determining IP address of the client is
      provided by uvicorn's ProxyHeadersMiddleware.
     """
-    forwarded = (
-        request.headers.get("x-forwarded-for")
-        or request.headers.get("x_forwarded_for")
-        or request.headers.get("X_FORWARDED_FOR")
+    forwarded = request.headers.get("x-forwarded-for") or request.headers.get(
+        "x_forwarded_for"
     )
     if forwarded:
         client_ip = forwarded.split(",")[0].strip()
