@@ -552,6 +552,22 @@ class Limiter:
 
         return int(time.time() + retry_after_int)
 
+    def _is_rate_limiting_complete(self, request: Request) -> bool:
+        """
+        Whether this limiter has already checked its limits for this request.
+
+        This is tracked per limiter, so that an endpoint decorated by several
+        `Limiter` instances gets the limits of each of them enforced.
+        """
+        return self in getattr(request.state, "_rate_limiting_complete_for", ())
+
+    def _mark_rate_limiting_complete(self, request: Request) -> None:
+        completed = getattr(request.state, "_rate_limiting_complete_for", None)
+        if completed is None:
+            completed = request.state._rate_limiting_complete_for = set()
+        completed.add(self)
+        request.state._rate_limiting_complete = True
+
     def _check_request_limit(
         self,
         request: Request,
@@ -729,11 +745,11 @@ class Limiter:
                                 "parameter `request` must be an instance of starlette.requests.Request"
                             )
 
-                        if self._auto_check and not getattr(
-                            request.state, "_rate_limiting_complete", False
+                        if self._auto_check and not self._is_rate_limiting_complete(
+                            request
                         ):
                             self._check_request_limit(request, func, False)
-                            request.state._rate_limiting_complete = True
+                            self._mark_rate_limiting_complete(request)
                     response = await func(*args, **kwargs)  # type: ignore
                     if self.enabled:
                         if not isinstance(response, Response):
@@ -762,11 +778,11 @@ class Limiter:
                                 "parameter `request` must be an instance of starlette.requests.Request"
                             )
 
-                        if self._auto_check and not getattr(
-                            request.state, "_rate_limiting_complete", False
+                        if self._auto_check and not self._is_rate_limiting_complete(
+                            request
                         ):
                             self._check_request_limit(request, func, False)
-                            request.state._rate_limiting_complete = True
+                            self._mark_rate_limiting_complete(request)
                     response = func(*args, **kwargs)
                     if self.enabled:
                         if not isinstance(response, Response):
