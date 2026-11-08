@@ -4,6 +4,7 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
 from starlette.testclient import TestClient
 
+from slowapi.extension import Limiter
 from slowapi.util import get_ipaddr
 from tests import TestSlowapi
 
@@ -139,6 +140,33 @@ class TestDecorators(TestSlowapi):
                 assert cli.get("/t1").status_code == 200
 
             assert cli.get("/t1").status_code == 429
+            assert (
+                cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
+                == 429
+            )
+
+    @pytest.mark.parametrize("sync", [False, True])
+    def test_multiple_limiters(self, build_fastapi_app, sync):
+        app, limiter = build_fastapi_app(key_func=get_ipaddr)
+        # a second, independent limiter using a shared key for every client
+        global_limiter = Limiter(key_func=lambda: "global")
+
+        def sync_t1(request: Request):
+            return PlainTextResponse("test")
+
+        async def async_t1(request: Request):
+            return PlainTextResponse("test")
+
+        t1 = sync_t1 if sync else async_t1
+
+        app.get("/t1")(limiter.limit("10/minute")(global_limiter.limit("5/minute")(t1)))
+
+        with hiro.Timeline().freeze():
+            cli = TestClient(app)
+            for i in range(0, 10):
+                response = cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.2"})
+                # the inner limiter must be enforced too, not only the outer one
+                assert response.status_code == (200 if i < 5 else 429)
             assert (
                 cli.get("/t1", headers={"X_FORWARDED_FOR": "127.0.0.3"}).status_code
                 == 429
